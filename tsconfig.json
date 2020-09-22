@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "outDir": "./dist"
+    },
+    "exclude": ["types.d.ts", "RpcInterfaces.d.ts", "dist"]
+}

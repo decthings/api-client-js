@@ -1,0 +1,25 @@
+{
+  "name": "@decthings/api-client",
+  "version": "0.0.0",
+  "description": "Official JavaScript API client for Decthings",
+  "main": "dist/index.js",
+  "browser": "dist/browser-index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Decthings",
+  "license": "MIT",
+  "dependencies": {
+    "@decthings/ds-nodes": "^0.0.1",
+    "browserfs": "^1.4.3",
+    "buffer": "^5.6.0",
+    "events": "^3.2.0",
+    "json-buffer": "^3.0.1",
+    "jsonwebtoken": "^8.5.1"
+  },
+  "devDependencies": {
+    "@types/json-buffer": "^3.0.0",
+    "@types/jsonwebtoken": "^8.5.0",
+    "@types/node": "^14.11.2"
+  }
+}
