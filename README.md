@@ -16,7 +16,7 @@ Can be used either in the browser or in Node.js.
 
 ```typescript
 import * as fs from 'fs';
-import { DecthingsClient } from 'decthings';
+import { DecthingsClient } from '@decthings/api-client';
 
 // Read image and convert to base64 data
 const imageData = fs.readFileSync('/path/to/image').toString('base64');
