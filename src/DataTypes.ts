@@ -27,16 +27,17 @@ export type DataType =
     | 'video'
 
 /**
- * Specifies rules for the shape and allowed data types for a Data or DataJson.
+ * Specifies rules for the shape and allowed data types for a Data or DataElement.
  */
 export type DataRules = {
     /**
      * Dimensions of the data array.
      *
-     * [1] would mean that the data must contain just a single element, [2] would mean two elements and so on.
-     * [2, 1] would mean that the data must contain two arrays that each contain one element,
-     * [2, 2, 1] would mean that the data must contain two arrays that each contain two arrays that each contain
-     * one element, and so on.
+     * [] would mean a DataElement.
+     * [1] would mean a Data that contains just a single element, [2] would mean two DataElements and so on.
+     * [2, 1] would mean a Data that containx two arrays that each contain one DataElement.
+     * [2, 2, 1] would mean a Data that contains two arrays that each contain two arrays that each contain
+     * one DataElement, and so on.
      *
      * Providing a value of -1 in any place would allow dimension to be of any length.
      */

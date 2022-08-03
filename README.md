@@ -8,7 +8,7 @@
 
 [![npm version](https://badge.fury.io/js/@decthings%2Fapi-client.svg)](https://badge.fury.io/js/@decthings%2Fapi-client)
 
-[Decthings](https://decthings.com) is cloud-based API for artificial intelligence and machine learning.
+[Decthings](https://decthings.com) is a cloud-based API for artificial intelligence and machine learning.
 
 `npm install @decthings/api-client`
 
