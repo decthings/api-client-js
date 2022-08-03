@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "description": "Official JavaScript API client for Decthings",
   "main": "dist/index.js",
-  "browser": "dist/browser-index.js",
+  "browser": "dist/browser.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepack": "rm -rf ./dist && tsc || true"
   },
   "repository": {
     "type": "git",
@@ -14,16 +15,14 @@
   "author": "Decthings",
   "license": "MIT",
   "dependencies": {
-    "@decthings/ds-nodes": "^0.0.1",
-    "browserfs": "^1.4.3",
-    "buffer": "^5.6.0",
-    "events": "^3.2.0",
-    "json-buffer": "^3.0.1",
-    "jsonwebtoken": "^8.5.1"
+    "jsonwebtoken": "^8.5.1",
+    "node-fetch": "^2.6.7",
+    "ws": "^8.6.0"
   },
   "devDependencies": {
-    "@types/json-buffer": "^3.0.0",
-    "@types/jsonwebtoken": "^8.5.0",
-    "@types/node": "^14.11.2"
+    "@types/jsonwebtoken": "^8.5.8",
+    "@types/node": "^17.0.23",
+    "@types/node-fetch": "^2.6.1",
+    "@types/ws": "^8.5.3"
   }
 }

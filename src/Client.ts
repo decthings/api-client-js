@@ -1,341 +1,348 @@
 import { EventEmitter } from 'events'
-import * as JsonBuffer from 'json-buffer'
-
-import { RpcClient, Converter, RpcError } from '@decthings/ds-nodes'
-
+import { Buffer } from 'buffer'
+import * as Protocol from './Protocol'
 import {
-    IDebugRpc,
-    IBlueprintRpc,
-    ITerminalRpc,
-    IDatasetRpc,
-    IModelRpc,
-    IAuthRpc,
-    ITeamRpc,
-    IUserRpc,
-    ILanguageRpc,
-    IPersistentLauncherRpc
-} from '../types/RpcInterfaces/RpcInterfaces'
+    makeDatasetRpc,
+    makeDebugRpc,
+    makeFsRpc,
+    makeLanguageRpc,
+    makeModelRpc,
+    makePersistentLauncherRpc,
+    makeSpawnedRpc,
+    makeTeamRpc,
+    makeTerminalRpc,
+    makeUserRpc
+} from './RPC'
+import { IDebugRpc, ITerminalRpc, IDatasetRpc, IModelRpc, ITeamRpc, IUserRpc, ILanguageRpc, IPersistentLauncherRpc, IFsRpc } from './RpcInterfaces'
+import { ISpawnedRpc } from './RpcInterfaces/SpawnedRpc'
 
-import { FileSystem, configureFileSystem } from './fs/Fs'
-import { IDecthingsFs } from '../types/DecthingsFs'
-
-export const config: {
-    transport: typeof import('@decthings/ds-nodes').BrowserWebSocketTransport | typeof import('@decthings/ds-nodes').WebSocketTransport
-    defaultWsAddress: string
-} = {
-    transport: null,
-    defaultWsAddress: 'wss://app.decthings.com/api'
+function isResponseMessage(message: Protocol.ResponseMessage | Protocol.EventMessage): message is Protocol.ResponseMessage {
+    return typeof (message as any).id === 'number'
 }
 
-export declare interface DecthingsClient {
-    on(event: 'close', listener: () => void): this
+export class DecthingsClientClosedError extends Error {
+    constructor() {
+        super('The RPC call failed because the DecthingsClient was closed, by calling client.close().')
+        this.name = 'DecthingsClientClosedError'
+    }
+}
+
+export class DecthingsClientWebSocketClosedError extends Error {
+    constructor(public ev: import('ws').CloseEvent) {
+        super('The RPC call failed because the DecthingsClient WebSocket connection was closed.')
+        this.name = 'DecthingsClientWebSocketClosedError'
+    }
+}
+
+const defaultWsAddress = 'wss://app.decthings.com/ws_api/v0'
+const defaultHttpAddress = 'https://app.decthings.com/api/v0'
+
+export type DecthingsClientOptions = {
+    /**
+     * Server address to use for WebSocket API. Defaults to "wss://app.decthings.com/ws_api/v0"
+     */
+    wsServerAddress?: string
+    /**
+     * Server address to use for HTTP API. Defaults to "https://app.decthings.com/api/v0"
+     */
+    httpServerAddress?: string
+    /**
+     * Optional API key. Some methods require this to be set.
+     */
+    apiKey?: string
+    /**
+     * Whether to force use of HTTP, WebSocket. Default is "mixed", where the best will be chosen depending on the method called.
+     */
+    mode?: 'http' | 'ws' | 'mixed'
+}
+
+export declare interface DecthingsClient extends EventEmitter {
+    on(event: 'ws_error', handler: (ev: import('ws').ErrorEvent) => void): this
+    emit(event: 'ws_error', ev: import('ws').ErrorEvent): boolean
+    removeListener(event: 'ws_error', handler: (ev: import('ws').ErrorEvent) => void): this
+
+    on(event: 'ws_close', handler: (ev?: import('ws').CloseEvent) => void): this
+    emit(event: 'ws_close', ev?: import('ws').CloseEvent): boolean
+    removeListener(event: 'ws_close', handler: (ev?: import('ws').CloseEvent) => void): this
+
+    on(event: 'ws_open', handler: () => void): this
+    emit(event: 'ws_open'): boolean
+    removeListener(event: 'ws_open', handler: () => void): this
+
+    on(event: 'subscriptions_removed', handler: () => void): this
+    emit(event: 'subscriptions_removed'): boolean
+    removeListener(event: 'subscriptions_removed', handler: () => void): this
+
+    on(event: 'close', handler: () => void): this
     emit(event: 'close'): boolean
-    removeListener(event: 'close', listener: () => void): this
+    removeListener(event: 'close', handler: () => void): this
 
-    on(event: 'login', listener: (userid: string) => void): this
-    emit(event: 'login', userid: string): boolean
-    removeListener(event: 'login', listener: (userid: string) => void): this
+    on(event: 'event', handler: (api: string, eventName: string, params: any[], data: Buffer[]) => void): this
+    emit(event: 'event', api: string, eventName: string, params: any[], data: Buffer[]): boolean
+    removeListener(event: 'event', handler: (api: string, eventName: string, params: any[], data: Buffer[]) => void): this
 }
-
-type DecthingsClientOptions = { silent?: boolean; serverAddress?: string }
 
 export class DecthingsClient extends EventEmitter {
-    private options: DecthingsClientOptions
-    private transport: import('@decthings/ds-nodes').BrowserWebSocketTransport | import('@decthings/ds-nodes').WebSocketTransport
-    private rpcClient: RpcClient
+    private static WebSocket: (address: string) => InstanceType<typeof import('ws')>
+    private static fetch: typeof fetch
 
-    private didLogin = false
+    private wsServerAddress: string
+    private httpServerAddress: string
+    private mode: 'http' | 'ws' | 'mixed'
 
-    public token: string
-    public currentUserid?: string
+    #_apiKey?: string
+    private _closed = false
+    private _waitingResponses = new Map<number, { resolve: (result: { error?: any; result?: any; data: Buffer[] }) => void; reject: (reason: any) => void }>()
+    private _listeningForEventIds = new Set<string>()
+    private _idCounter = 1
+
+    private _ws: {
+        promise: Promise<import('ws')>
+        dispose: () => void
+    }
+
+    private _createSocket() {
+        let disposed = false
+        this._ws = {
+            dispose: () => {
+                disposed = true
+            },
+            promise: new Promise(async (resolve) => {
+                while (true) {
+                    if (disposed) {
+                        resolve(null)
+                        return
+                    }
+
+                    const ws = DecthingsClient.WebSocket(this.wsServerAddress)
+
+                    ws.addEventListener('message', (data) => {
+                        const parsed = Protocol.deserialize<Protocol.ResponseMessage | Protocol.EventMessage>(
+                            typeof data.data === 'string'
+                                ? Buffer.from(data.data)
+                                : Buffer.isBuffer(data.data)
+                                ? data.data
+                                : Array.isArray(data.data)
+                                ? Buffer.concat(data.data)
+                                : Buffer.from(data.data)
+                        )
+                        if (isResponseMessage(parsed.message)) {
+                            const waiting = this._waitingResponses.get(parsed.message.id)
+                            if (waiting) {
+                                this._waitingResponses.delete(parsed.message.id)
+                                waiting.resolve({ result: parsed.message.result, error: parsed.message.error, data: parsed.data })
+                            }
+                            if (this._waitingResponses.size === 0 && this._listeningForEventIds.size === 0) {
+                                setTimeout(() => {
+                                    if (this._waitingResponses.size === 0 && this._listeningForEventIds.size === 0) {
+                                        if (!this._ws) {
+                                            return
+                                        }
+                                        const _ws = this._ws
+                                        delete this._ws
+                                        _ws.dispose()
+                                    }
+                                }, 1000)
+                            }
+                        } else {
+                            this.emit('event', parsed.message.api, parsed.message.event, parsed.message.params, parsed.data)
+                        }
+                    })
+
+                    const didOpen = await new Promise<boolean>((_resolve) => {
+                        const closedListener = (ev: import('ws').CloseEvent) => {
+                            this.emit('ws_close', ev)
+                            _resolve(false)
+                        }
+                        const errorListener = (ev: import('ws').ErrorEvent) => {
+                            this.emit('ws_error', ev)
+                            _resolve(false)
+                        }
+                        const openListener = () => {
+                            ws.removeEventListener('close', closedListener)
+                            ws.removeEventListener('error', errorListener)
+
+                            _resolve(true)
+                            resolve(ws)
+
+                            if (disposed) {
+                                ws.close()
+                                return
+                            }
+
+                            ws.addEventListener('error', (ev) => {
+                                this.emit('ws_error', ev)
+                            })
+                            ws.addEventListener('close', (ev) => {
+                                this.emit('ws_close', ev)
+                                if (disposed) {
+                                    return
+                                }
+                                this._waitingResponses.forEach((handler) => {
+                                    handler.reject(new DecthingsClientWebSocketClosedError(ev))
+                                })
+                                this._waitingResponses.clear()
+                                this._listeningForEventIds.clear()
+                                this.emit('subscriptions_removed')
+                                delete this._ws
+                            })
+                            this.emit('ws_open')
+
+                            _resolve(true)
+                        }
+                        ws.addEventListener('close', closedListener)
+                        ws.addEventListener('error', errorListener)
+                        ws.addEventListener('open', openListener)
+                    })
+
+                    if (didOpen) {
+                        return
+                    }
+
+                    await new Promise((_resolve) => setTimeout(_resolve, 100))
+                }
+            })
+        }
+    }
 
     constructor(options: DecthingsClientOptions = {}) {
         super()
 
-        this.options = {
-            silent: options.silent || false,
-            serverAddress: options.serverAddress || config.defaultWsAddress
+        this.wsServerAddress = options.wsServerAddress || defaultWsAddress
+        if (typeof this.wsServerAddress !== 'string') {
+            throw new Error('Invalid option: Expected wsServerAddress to be a string.')
+        }
+        this.httpServerAddress = options.httpServerAddress || defaultHttpAddress
+        if (typeof this.httpServerAddress !== 'string') {
+            throw new Error('Invalid option: Expected httpServerAddress to be a string.')
+        }
+        this.mode = options.mode || 'mixed'
+        if (this.mode !== 'http' && this.mode !== 'mixed' && this.mode !== 'ws') {
+            throw new Error('Invalid option: Expected mode to be "http", "ws" or "mixed".')
         }
 
-        this.rpcClient = new RpcClient([])
-        let stringifier = new Converter([this.rpcClient], (message) => {
-            return JsonBuffer.stringify(message)
-        })
-        this.transport = new config.transport([stringifier], { address: this.options.serverAddress })
-        let parser = new Converter([this.transport], (message: any) => {
-            return JsonBuffer.parse(message.toString())
-        })
-        parser.pipe(this.rpcClient)
+        const addEvent = (id: string) => {
+            this._listeningForEventIds.add(id)
+        }
+        const removeEvent = (id: string) => {
+            this._listeningForEventIds.delete(id)
+            if (this._listeningForEventIds.size === 0 && this._waitingResponses.size === 0) {
+                if (!this._ws) {
+                    return
+                }
+                const _ws = this._ws
+                delete this._ws
+                _ws.dispose()
+            }
+        }
 
-        this.authRpc = this.rpcClient.api('AuthRpc')
-        this.freeModelRpc = this.rpcClient.api('ModelRpc')
+        this.dataset = makeDatasetRpc(this)
+        this.debug = makeDebugRpc(this, addEvent, removeEvent)
+        this.fs = makeFsRpc(this)
+        this.language = makeLanguageRpc(this, addEvent, removeEvent)
+        this.model = makeModelRpc(this)
+        this.persistentLauncher = makePersistentLauncherRpc(this)
+        this.spawned = makeSpawnedRpc(this, addEvent, removeEvent)
+        this.team = makeTeamRpc(this)
+        this.terminal = makeTerminalRpc(this, addEvent, removeEvent)
+        this.user = makeUserRpc(this)
+
+        this.setApiKey(options.apiKey)
     }
 
-    private promiseLoginToServer(): Promise<void> {
-        return new Promise((resolve) => {
-            if (this.didLogin) {
-                resolve()
-                return
+    public fs: IFsRpc
+    public debug: IDebugRpc
+    public terminal: ITerminalRpc
+    public spawned: ISpawnedRpc
+    public dataset: IDatasetRpc
+    public model: IModelRpc
+    public team: ITeamRpc
+    public user: IUserRpc
+    public persistentLauncher: IPersistentLauncherRpc
+    public language: ILanguageRpc
+
+    /**
+     * Call an RPC method on the server.
+     *
+     * You most likely want to use the helper classes (client.model, client.data, etc.) instead.
+     */
+    public async rawMethodCall(
+        api: string,
+        method: string,
+        params: any[],
+        data: Buffer[],
+        forceWebSocket: boolean = false
+    ): Promise<{ error?: any; result?: any; data: Buffer[] }> {
+        if (this._closed) {
+            throw new DecthingsClientClosedError()
+        }
+        if (!this._ws && (forceWebSocket || this.mode === 'ws') && this.mode !== 'http') {
+            this._createSocket()
+        }
+        if (this._ws) {
+            // Send over WebSocket
+            const id = this._idCounter++
+            const message: Protocol.RequestMessage = {
+                id,
+                api,
+                method,
+                params,
+                apiKey: this.#_apiKey
             }
-            let handler = () => {
-                this.removeListener('login', handler)
-                resolve()
+            return new Promise((resolve, reject) => {
+                this._waitingResponses.set(id, { resolve, reject })
+                this._ws.promise.then((socket) => {
+                    socket.send(Protocol.serialize(message, data))
+                })
+            })
+        } else {
+            // Send over HTTP
+            const headers: string[][] = [['Content-Type', 'application/octet-stream']]
+            if (this.#_apiKey) {
+                headers.push(['Authorization', `Bearer ${this.#_apiKey}`])
             }
-            this.on('login', handler)
-        })
+            const body = Protocol.serialize(params, data)
+            const response = await DecthingsClient.fetch(`${this.httpServerAddress}/${api}/${method}`, {
+                method: 'POST',
+                body,
+                headers
+            })
+            if (response.headers.get('Content-Type') !== 'application/octet-stream') {
+                throw response
+            }
+            const responseBody = Buffer.from(await response.arrayBuffer())
+            const parsed = Protocol.deserialize<{ result?: any; error?: any }>(responseBody)
+            return parsed.message.error ? { error: parsed.message.error, data: parsed.data } : { result: parsed.message.result, data: parsed.data }
+        }
     }
 
-    public authRpc: IAuthRpc
-
-    private _decthingsFs: IDecthingsFs
-    public decthingsFs = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._decthingsFs[p](...args)
-                }
-            }
-        }
-    ) as IDecthingsFs
-
-    private _fs: FileSystem
-    public fs = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return new Proxy(
-                    {},
-                    {
-                        get: (target, p2) => {
-                            return async (...args: any) => {
-                                await this.promiseLoginToServer()
-                                return this._fs[p][p2](...args)
-                            }
-                        }
-                    }
-                )
-            }
-        }
-    ) as FileSystem
-
-    private _debugRpc: IDebugRpc
-    public debugRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._debugRpc[p](...args)
-                }
-            }
-        }
-    ) as IDebugRpc
-
-    private _blueprintRpc: IBlueprintRpc
-    public blueprintRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._blueprintRpc[p](...args)
-                }
-            }
-        }
-    ) as IBlueprintRpc
-
-    private _terminalRpc: ITerminalRpc
-    public terminalRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._terminalRpc[p](...args)
-                }
-            }
-        }
-    ) as ITerminalRpc
-
-    private _datasetRpc: IDatasetRpc
-    public datasetRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._datasetRpc[p](...args)
-                }
-            }
-        }
-    ) as IDatasetRpc
-
-    private _modelRpc: IModelRpc
-    public modelRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._modelRpc[p](...args)
-                }
-            }
-        }
-    ) as IModelRpc
-
-    public freeModelRpc: IModelRpc
-
-    private _teamRpc: ITeamRpc
-    public teamRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._teamRpc[p](...args)
-                }
-            }
-        }
-    ) as ITeamRpc
-
-    private _userRpc: IUserRpc
-    public userRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._userRpc[p](...args)
-                }
-            }
-        }
-    ) as IUserRpc
-
-    private _persistentLauncherRpc: IPersistentLauncherRpc
-    public persistentLauncherRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._persistentLauncherRpc[p](...args)
-                }
-            }
-        }
-    ) as IPersistentLauncherRpc
-
-    private _languageRpc: ILanguageRpc
-    public languageRpc = new Proxy(
-        {},
-        {
-            get: (target, p) => {
-                return async (...args: any) => {
-                    await this.promiseLoginToServer()
-                    return this._languageRpc[p](...args)
-                }
-            }
-        }
-    ) as ILanguageRpc
-
-    public async loginWithToken(
-        token: string
-    ): Promise<{
-        error?:
-            | {
-                  code: 'bad_credentials'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        userId?: string
-    }> {
-        let tokenVerification = await this.authRpc.verifyToken(token)
-        if (tokenVerification.error) {
-            return { error: tokenVerification.error }
-        }
-        let userId = tokenVerification.userId
-
-        this.token = token
-
-        this._decthingsFs = this.rpcClient.api('Fs', this.token)
-        this._debugRpc = this.rpcClient.api('DebugRpc', this.token)
-        this._blueprintRpc = this.rpcClient.api('BlueprintRpc', this.token)
-        this._terminalRpc = this.rpcClient.api('TerminalRpc', this.token)
-        this._datasetRpc = this.rpcClient.api('DatasetRpc', this.token)
-        this._modelRpc = this.rpcClient.api('ModelRpc', this.token)
-        this._teamRpc = this.rpcClient.api('TeamRpc', this.token)
-        this._userRpc = this.rpcClient.api('UserRpc', this.token)
-        this._persistentLauncherRpc = this.rpcClient.api('PersistentLauncherRpc', this.token)
-        this._languageRpc = this.rpcClient.api('LanguageRpc', this.token)
-
-        let proxifiedDecthingsFs = new Proxy(
-            {},
-            {
-                get: (_, prop) => {
-                    return async (...args: any[]) => {
-                        try {
-                            return await this._decthingsFs[prop](...args)
-                        } catch (e) {
-                            if (e instanceof RpcError) {
-                                throw e.errorDetails
-                            } else {
-                                throw e
-                            }
-                        }
-                    }
-                }
-            }
-        )
-
-        this._fs = await configureFileSystem({
-            fs: 'DecthingsFs',
-            options: {
-                backend: () => proxifiedDecthingsFs
-            }
-        })
-
-        this.options.silent || console.log('Logged in to Decthings.')
-
-        this.currentUserid = userId
-        this.didLogin = true
-        this.emit('login', userId)
-        return { userId }
+    /**
+     * Returns true if this client currently uses WebSocket connection instead of HTTP.
+     */
+    public isWebSocket(): boolean {
+        return !this._closed && Boolean(this._ws)
     }
 
-    public async login(
-        username: string,
-        password: string
-    ): Promise<{
-        error?:
-            | {
-                  code: 'bad_credentials' | 'user_not_activated'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        userid?: string
-    }> {
-        var data = await this.authRpc.getToken(username, password)
-        if (data.error) {
-            return { error: data.error }
+    public setApiKey(apiKey?: string) {
+        if (typeof apiKey === 'string') {
+            this.#_apiKey = apiKey
+        } else if (apiKey === null || apiKey === undefined) {
+            this.#_apiKey = undefined
+        } else {
+            throw new Error('Invalid API key. Expected a string (or null/undefined for no API key), got ' + typeof apiKey)
         }
-        return this.loginWithToken(data.token)
     }
 
-    private isClosed = false
-    public disconnect() {
-        if (this.isClosed) {
+    public close() {
+        if (this._closed) {
             return
         }
-        this.isClosed = true
-        delete this.currentUserid
-        this.transport.close()
+        this._closed = true
+        this._ws && this._ws.dispose()
+        delete this._ws
         this.emit('close')
+        this._waitingResponses.forEach((waiting) => {
+            waiting.reject(new DecthingsClientClosedError())
+        })
     }
 }

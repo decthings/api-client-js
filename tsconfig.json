@@ -1,10 +1,13 @@
 {
     "compilerOptions": {
-        "target": "es5",
+        "target": "es6",
         "module": "commonjs",
         "moduleResolution": "node",
+        "outDir": "./dist",
+        "sourceMap": true,
         "declaration": true,
-        "outDir": "./dist"
+        "inlineSources": true,
+        "esModuleInterop": true
     },
-    "exclude": ["types.d.ts", "RpcInterfaces.d.ts", "dist"]
+    "exclude": ["src/RpcInterfaces", "dist"]
 }

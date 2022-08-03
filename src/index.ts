@@ -1,6 +1,11 @@
-import { WebSocketTransport } from '@decthings/ds-nodes';
-import { config, DecthingsClient } from './Client'
+import WebSocket from 'ws'
+import nodeFetch from 'node-fetch'
+import { DecthingsClient, DecthingsClientOptions } from './Client'
 
-export { DecthingsClient }
+;(DecthingsClient as any).WebSocket = (address: string) => new WebSocket(address)
+;(DecthingsClient as any).fetch = nodeFetch
 
-config.transport = WebSocketTransport
+export * from './DataTypes'
+export * from './types'
+
+export { DecthingsClient, DecthingsClientOptions }
