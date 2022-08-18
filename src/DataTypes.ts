@@ -29,7 +29,7 @@ export type DataType =
 /**
  * Specifies rules for the shape and allowed data types for a Data or DataElement.
  */
-export type DataRules = {
+ export type DataRules = {
     /**
      * Dimensions of the data array.
      *
@@ -1207,4 +1207,5 @@ export type Parameter = {
 export type ParameterProvider = {
     name: string
     data: Data | Buffer | { type: 'dataset'; datasetId: string; shuffle?: boolean }
+    maxReads?: number
 }

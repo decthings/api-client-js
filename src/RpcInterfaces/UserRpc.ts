@@ -59,7 +59,7 @@ export interface IUserRpc {
                           type: 'trainingFinished'
                           modelId: string
                           trainingSessionId: string
-                          state: 'maxDurationExceeded' | 'failed' | 'completed'
+                          state: 'max_duration_exceeded' | 'failed' | 'completed'
                       }
                     | {
                           type: 'alert'
@@ -120,6 +120,14 @@ export interface IUserRpc {
                     evaluations: {
                         amount: number
                         baseCost: number
+                        outputData: {
+                            bytes: number
+                            cost: number
+                        }
+                        dataReads: {
+                            amount: number
+                            cost: number
+                        }
                         launchers: {
                             [spec in LauncherSpec]?: {
                                 warmupDurationSeconds: number
@@ -132,6 +140,10 @@ export interface IUserRpc {
                     createStates: {
                         amount: number
                         baseCost: number
+                        dataReads: {
+                            amount: number
+                            cost: number
+                        }
                         launchers: {
                             [spec in LauncherSpec]?: {
                                 warmupDurationSeconds: number
@@ -144,6 +156,10 @@ export interface IUserRpc {
                     trainingSessions: {
                         amount: number
                         baseCost: number
+                        dataReads: {
+                            amount: number
+                            cost: number
+                        }
                         launchers: {
                             [spec in LauncherSpec]?: {
                                 warmupDurationSeconds: number
@@ -180,6 +196,10 @@ export interface IUserRpc {
                     debugSessions: {
                         amount: number
                         baseCost: number
+                        dataReads: {
+                            amount: number
+                            cost: number
+                        }
                         launchers: {
                             [spec in LauncherSpec]?: {
                                 warmupDurationSeconds: number
@@ -191,8 +211,10 @@ export interface IUserRpc {
                     }
                 }
                 datasets: {
-                    mebibyteMinutes: number
-                    cost: number
+                    dataMebibyteMinutes: number
+                    dataCost: number
+                    addedEntries: number
+                    addedEntriesCost: number
                 }
                 persistentLaunchers: {
                     [spec in LauncherSpec]?: {

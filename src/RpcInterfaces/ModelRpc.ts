@@ -63,19 +63,19 @@ export interface IModelRpc {
 
     /**
      * Wait for the model create to finish.
-     * @param modelId The model's ID.
+     * @param modelId The model's id.
      */
     waitForModelToBeCreated(modelId: string): Promise<{
         error?: { code: 'model_not_found' | 'model_already_created' } | GenericError
         result?: {
             createModelFailed?: {
                 error:
-                    | { code: 'cancelled' | 'server_overloaded' | 'unknown' }
+                    | { code: 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown' }
                     | {
                           code: 'create_state_error'
                           details:
                               | {
-                                    code: 'maxDurationExceeded'
+                                    code: 'max_duration_exceeded'
                                     at: 'launchSession' | 'createState'
                                 }
                               | {
@@ -106,7 +106,7 @@ export interface IModelRpc {
 
     /**
      * Delete a model and the associated filesystem, snapshots, states etc. If the model is being created, it will be cancelled.
-     * @param modelId The model's ID.
+     * @param modelId The model's id.
      */
     deleteModel(modelId: string): Promise<{
         error?: { code: 'model_not_found' | 'access_denied' } | GenericError
@@ -115,7 +115,7 @@ export interface IModelRpc {
 
     /**
      * Create a snapshot of a model.
-     * @param modelId The model's ID.
+     * @param modelId The model's id.
      * @param snapshotName The name of the snapshot.
      */
     snapshotModel(
@@ -130,8 +130,8 @@ export interface IModelRpc {
 
     /**
      * Set the name of a snapshot.
-     * @param modelId The model's ID.
-     * @param snapshotId The snapshot's ID.
+     * @param modelId The model's id.
+     * @param snapshotId The snapshot's id.
      * @param newSnapshotName The new name of the snapshot.
      */
     setSnapshotName(
@@ -145,8 +145,8 @@ export interface IModelRpc {
 
     /**
      * Delete a snapshot from a model.
-     * @param modelId The model's ID.
-     * @param snapshotId The snapshot's ID.
+     * @param modelId The model's id.
+     * @param snapshotId The snapshot's id.
      */
     deleteSnapshot(
         modelId: string,
@@ -233,7 +233,15 @@ export interface IModelRpc {
         executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec }
     ): Promise<{
         error?:
-            | { code: 'model_not_found' | 'persistentLauncher_not_found' | 'invalid_executor_type' | 'snapshot_no_longer_exists' | 'access_denied' | 'quota_exceeded' }
+            | {
+                  code:
+                      | 'model_not_found'
+                      | 'persistent_launcher_not_found'
+                      | 'invalid_executor_type'
+                      | 'snapshot_no_longer_exists'
+                      | 'access_denied'
+                      | 'quota_exceeded'
+              }
             | { code: 'dataset_not_found'; datasetId: string }
             | GenericError
         result?: {
@@ -245,7 +253,7 @@ export interface IModelRpc {
             }
             failed?:
                 | {
-                      code: 'launcher_terminated' | 'cancelled' | 'server_overloaded' | 'unknown'
+                      code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
                   }
                 | {
                       code: 'session_terminated'
@@ -253,7 +261,7 @@ export interface IModelRpc {
                       signal?: string
                   }
                 | {
-                      code: 'maxDurationExceeded'
+                      code: 'max_duration_exceeded'
                       at: 'launchSession' | 'createState'
                   }
                 | { code: 'exception'; at: 'launchSession' | 'createState'; exceptionDetails?: string }
@@ -288,7 +296,7 @@ export interface IModelRpc {
     /**
      * Cancel the creation of a state.
      * @param modelId The model's id.
-     * @param stateId The state's ID.
+     * @param stateId The state's id.
      */
     cancelCreateState(
         modelId: string,
@@ -300,7 +308,7 @@ export interface IModelRpc {
 
     /**
      * Get all states that are being created on a model.
-     * @param modelId The model's ID.
+     * @param modelId The model's id.
      */
     getCreatingStates(modelId: string): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' } | GenericError
@@ -311,8 +319,8 @@ export interface IModelRpc {
 
     /**
      * Wait for a state that is being created to finish.
-     * @param modelId The model's ID.
-     * @param stateId The state's ID.
+     * @param modelId The model's id.
+     * @param stateId The state's id.
      */
     waitForStateToBeCreated(
         modelId: string,
@@ -322,9 +330,9 @@ export interface IModelRpc {
         result?: {
             createStateFailed?: {
                 error:
-                    | { code: 'cancelled' | 'server_overloaded' | 'unknown' }
+                    | { code: 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown' }
                     | {
-                          code: 'maxDurationExceeded'
+                          code: 'max_duration_exceeded'
                           at: 'launchSession' | 'createState'
                       }
                     | {
@@ -462,7 +470,15 @@ export interface IModelRpc {
         executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec }
     ): Promise<{
         error?:
-            | { code: 'model_not_found' | 'persistentLauncher_not_found' | 'invalid_executor_type' | 'snapshot_no_longer_exists' | 'access_denied' | 'quota_exceeded' | 'server_overloaded' }
+            | {
+                  code:
+                      | 'model_not_found'
+                      | 'persistent_launcher_not_found'
+                      | 'invalid_executor_type'
+                      | 'snapshot_no_longer_exists'
+                      | 'access_denied'
+                      | 'quota_exceeded'
+              }
             | { code: 'dataset_not_found'; datasetId: string }
             | GenericError
         result?: {
@@ -541,7 +557,7 @@ export interface IModelRpc {
                       finishedAt: number
                       failReason:
                           | {
-                                code: 'cancelled' | 'launcherTerminated' | 'server_overloaded' | 'unknown'
+                                code: 'cancelled' | 'launcher_terminated' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
                             }
                           | {
                                 code: 'exception'
@@ -549,12 +565,12 @@ export interface IModelRpc {
                                 exceptionDetails?: string
                             }
                           | {
-                                code: 'sessionTerminated'
+                                code: 'session_terminated'
                                 exitCode?: number
                                 signal?: string
                             }
                           | {
-                                code: 'maxDurationExceeded'
+                                code: 'max_duration_exceeded'
                                 at: 'launchSession' | 'instantiateModel' | 'train' | 'getState'
                             }
                   }
@@ -564,7 +580,7 @@ export interface IModelRpc {
     /**
      * Retrieve the metrics of a training session.
      * @param modelId The model's id.
-     * @param trainingSessionId The training session's ID as returned by train.
+     * @param trainingSessionId The training session's id as returned by train.
      * @param metrics Which metrics to fetch.
      */
     getTrainingMetrics(
@@ -585,7 +601,7 @@ export interface IModelRpc {
     /**
      * Cancel an ongoing training session.
      * @param modelId The model's id.
-     * @param trainingSessionId The training session's ID as returned by train.
+     * @param trainingSessionId The training session's id as returned by train.
      */
     cancelTrainingSession(
         modelId: string,
@@ -598,7 +614,7 @@ export interface IModelRpc {
     /**
      * Clear the data of a finished training session.
      * @param modelId The model's id.
-     * @param trainingSessionId The training session's ID as returned by train.
+     * @param trainingSessionId The training session's id as returned by train.
      */
     clearPreviousTrainingSession(
         modelId: string,
@@ -644,7 +660,7 @@ export interface IModelRpc {
 
     /**
      * Get running and finished evaluations of a model.
-     * @param modelId The model's ID.
+     * @param modelId The model's id.
      */
     getEvaluations(modelId: string): Promise<{
         error?: { code: 'model_not_found' } | GenericError
@@ -659,7 +675,7 @@ export interface IModelRpc {
      *
      * Results for finished evaluations are only available for a few minutes.
      * @param modelId The model's id.
-     * @param evaluationId The ID of the evaluation.
+     * @param evaluationId The id of the evaluation.
      */
     getFinishedEvaluationResult(
         modelId: string,
@@ -682,7 +698,7 @@ export interface IModelRpc {
     /**
      * Cancel an ongoing evaluation.
      * @param modelId The model's id.
-     * @param evalutionId The ID of the evaluation.
+     * @param evalutionId The id of the evaluation.
      */
     cancelEvaluation(
         modelId: string,
@@ -703,7 +719,7 @@ export interface IModelRpc {
     ): Promise<{
         error?:
             | {
-                  code: 'persistentLauncher_not_found' | 'model_not_found' | 'invalid_executor_type' | 'snapshot_no_longer_exists' | 'access_denied'
+                  code: 'persistent_launcher_not_found' | 'model_not_found' | 'invalid_executor_type' | 'snapshot_no_longer_exists' | 'access_denied'
               }
             | GenericError
         result?: {}

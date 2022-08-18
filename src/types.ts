@@ -26,15 +26,18 @@ export type CompositeModelDefinition = {
                       nodeIndex: number
                       fromOutputName: string
                       shuffle: boolean
+                      maxReads: number
                   }
                 | {
                       type: 'constant'
                       index: number
+                      maxReads: number
                   }
                 | {
                       type: 'input'
                       index: number
                       shuffle: boolean
+                      maxReads: number
                   }
         }[]
         layout: {
@@ -201,86 +204,88 @@ export type ModelState = {
     segmentByteSizes: number[]
 }
 
-export type FailedEvaluationResultDetails = {
-    notComposite?: {
-        durations: {
-            createLauncher?: number
-            createSession?: number
-            createInstantiatedModel?: number
-            evaluate?: number
-        }
-        executedOnLauncher?:
-            | {
-                  type: 'persistent'
-                  persistentLauncherId: string
+export type FailedEvaluationResultDetails =
+    | {
+          modelType: 'code'
+          durations: {
+              createLauncher?: number
+              createSession?: number
+              createInstantiatedModel?: number
+              evaluate?: number
+          }
+          executedOnLauncher?:
+              | {
+                    type: 'persistent'
+                    persistentLauncherId: string
+                }
+              | {
+                    type: 'createdNew'
+                    launcherSpec: LauncherSpec
+                }
+          error:
+              | {
+                    code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
+                }
+              | { code: 'session_terminated'; exitCode?: number; signal?: string }
+              | { code: 'exception'; at: 'launchSession' | 'instantiateModel' | 'evaluate'; exceptionDetails?: string }
+              | {
+                    code: 'max_duration_exceeded'
+                    at: 'launchSession' | 'instantiateModel' | 'evaluate'
+                }
+              | { code: 'invalid_output'; type: 'invalid' | 'not_applicable_to_parameterDefinitions'; reason: string }
+      }
+    | {
+          modelType: 'composite'
+          nodes: {
+              definition: CompositeModelDefinition['nodes'][0]
+              failed?: FailedEvaluationResultDetails
+              success?: EvaluationResultDetails
+          }[]
+          outputs: CompositeModelDefinition['outputs']
+          inputs: CompositeModelDefinition['inputs']
+          constants: {
+              value: null
+              shuffle: boolean
+              layout: {
+                  posX: number
+                  posY: number
               }
-            | {
-                  type: 'createdNew'
-                  launcherSpec: LauncherSpec
-              }
-        error:
-            | {
-                  code: 'launcher_terminated' | 'cancelled' | 'server_overloaded' | 'unknown'
-              }
-            | { code: 'session_terminated'; exitCode?: number; signal?: string }
-            | { code: 'exception'; at: 'launchSession' | 'instantiateModel' | 'evaluate'; exceptionDetails?: string }
-            | {
-                  code: 'maxDurationExceeded'
-                  at: 'launchSession' | 'instantiateModel' | 'evaluate'
-              }
-            | { code: 'invalid_output'; type: 'invalid' | 'not_applicable_to_parameterDefinitions'; reason: string }
-    }
-    composite?: {
-        nodes: {
-            definition: CompositeModelDefinition['nodes'][0]
-            failed?: FailedEvaluationResultDetails
-            success?: EvaluationResultDetails
-        }[]
-        outputs: CompositeModelDefinition['outputs']
-        inputs: CompositeModelDefinition['inputs']
-        constants: {
-            value: null
-            shuffle: boolean
-            layout: {
-                posX: number
-                posY: number
-            }
-        }[]
-    }
-}
+          }[]
+      }
 
-export type EvaluationResultDetails = {
-    notComposite?: {
-        durations: {
-            createLauncher?: number
-            createSession?: number
-            createInstantiatedModel?: number
-            evaluate: number
-        }
-        executedOnLauncher:
-            | {
-                  type: 'persistent'
-                  persistentLauncherId: string
+export type EvaluationResultDetails =
+    | {
+          modelType: 'code'
+          durations: {
+              createLauncher?: number
+              createSession?: number
+              createInstantiatedModel?: number
+              evaluate: number
+          }
+          executedOnLauncher:
+              | {
+                    type: 'persistent'
+                    persistentLauncherId: string
+                }
+              | {
+                    type: 'createdNew'
+                    launcherSpec: LauncherSpec
+                }
+      }
+    | {
+          modelType: 'composite'
+          nodes: { definition: CompositeModelDefinition['nodes'][0]; details: EvaluationResultDetails }[]
+          outputs: CompositeModelDefinition['outputs']
+          inputs: CompositeModelDefinition['inputs']
+          constants: {
+              value: null
+              shuffle: boolean
+              layout: {
+                  posX: number
+                  posY: number
               }
-            | {
-                  type: 'createdNew'
-                  launcherSpec: LauncherSpec
-              }
-    }
-    composite?: {
-        nodes: { definition: CompositeModelDefinition['nodes'][0]; details: EvaluationResultDetails }[]
-        outputs: CompositeModelDefinition['outputs']
-        inputs: CompositeModelDefinition['inputs']
-        constants: {
-            value: null
-            shuffle: boolean
-            layout: {
-                posX: number
-                posY: number
-            }
-        }[]
-    }
-}
+          }[]
+      }
 
 export type Dataset = {
     id: string
