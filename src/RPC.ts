@@ -1,17 +1,6 @@
 import { EventEmitter } from 'events'
 import { Buffer } from 'buffer'
-import {
-    IDatasetRpc,
-    IDebugRpc,
-    IFsRpc,
-    ILanguageRpc,
-    IModelRpc,
-    IPersistentLauncherRpc,
-    ISpawnedRpc,
-    ITeamRpc,
-    ITerminalRpc,
-    IUserRpc
-} from './RpcInterfaces'
+import { IDatasetRpc, IDebugRpc, IFsRpc, ILanguageRpc, IModelRpc, IPersistentLauncherRpc, ISpawnedRpc, ITeamRpc, ITerminalRpc, IUserRpc } from './RpcInterfaces'
 import { Data, DataElement, Parameter, ParameterProvider } from './DataTypes'
 import { DecthingsClient } from './Client'
 
@@ -157,23 +146,35 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
 }
 
 class DebugRpc extends EventEmitter implements IDebugRpc {
-    constructor(private _client: DecthingsClient, private _addEvent: (id: string) => void, private _removeEvent: (id: string) => void) {
+    _internal: {
+        client: DecthingsClient
+        addKeepalive: (id: string) => void
+        removeKeepalive: (id: string) => void
+    }
+    constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
+        this._internal = {
+            client,
+            addKeepalive,
+            removeKeepalive
+        }
     }
     launchDebugSession(...args: Parameters<IDebugRpc['launchDebugSession']>) {
         const subscribed = args[3] !== false
-        return this._client.rawMethodCall('Debug', 'launchDebugSession', args, [], subscribed).then((res) => {
+        return this._internal.client.rawMethodCall('Debug', 'launchDebugSession', args, [], subscribed).then((res) => {
             if (subscribed && res.result) {
-                this._addEvent(res.result.debugSessionId)
+                this._internal.addKeepalive(res.result.debugSessionId)
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     getDebugSessions(...args: Parameters<IDebugRpc['getDebugSessions']>) {
-        return this._client.rawMethodCall('Debug', 'getDebugSessions', args, []).then((res) => (res.result ? { result: res.result } : { error: res.error }))
+        return this._internal.client
+            .rawMethodCall('Debug', 'getDebugSessions', args, [])
+            .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     terminateDebugSession(...args: Parameters<IDebugRpc['terminateDebugSession']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Debug', 'terminateDebugSession', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
@@ -181,7 +182,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         const [newParams, data] = convertParameterProviders(args[1])
         const newArgs = [...args]
         newArgs[1] = newParams
-        return this._client
+        return this._internal.client
             .rawMethodCall('Debug', 'callCreateModelState', newArgs, data)
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
@@ -202,7 +203,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             dataToSend = []
         }
 
-        return this._client
+        return this._internal.client
             .rawMethodCall('Debug', 'callInstantiateModel', newArgs, dataToSend)
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
@@ -210,13 +211,17 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         const [newParams, data] = convertParameterProviders(args[2])
         const newArgs = [...args]
         newArgs[2] = newParams
-        return this._client.rawMethodCall('Debug', 'callTrain', newArgs, data).then((res) => (res.result ? { result: res.result } : { error: res.error }))
+        return this._internal.client
+            .rawMethodCall('Debug', 'callTrain', newArgs, data)
+            .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     getTrainingStatus(...args: Parameters<IDebugRpc['getTrainingStatus']>) {
-        return this._client.rawMethodCall('Debug', 'getTrainingStatus', args, []).then((res) => (res.result ? { result: res.result } : { error: res.error }))
+        return this._internal.client
+            .rawMethodCall('Debug', 'getTrainingStatus', args, [])
+            .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     getTrainingMetrics(...args: Parameters<IDebugRpc['getTrainingMetrics']>) {
-        return this._client.rawMethodCall('Debug', 'getTrainingMetrics', args, []).then((res) => {
+        return this._internal.client.rawMethodCall('Debug', 'getTrainingMetrics', args, []).then((res) => {
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -242,7 +247,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         })
     }
     cancelTrainingSession(...args: Parameters<IDebugRpc['cancelTrainingSession']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Debug', 'cancelTrainingSession', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
@@ -250,7 +255,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         const [newParams, data] = convertParameterProviders(args[2])
         const newArgs = [...args]
         newArgs[2] = newParams
-        return this._client.rawMethodCall('Debug', 'callEvaluate', newArgs, data).then((res) => {
+        return this._internal.client.rawMethodCall('Debug', 'callEvaluate', newArgs, data).then((res) => {
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -272,10 +277,12 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         })
     }
     callGetModelState(...args: Parameters<IDebugRpc['callGetModelState']>) {
-        return this._client.rawMethodCall('Debug', 'callGetModelState', args, []).then((res) => (res.result ? { result: res.result } : { error: res.error }))
+        return this._internal.client
+            .rawMethodCall('Debug', 'callGetModelState', args, [])
+            .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     downloadStateData(...args: Parameters<IDebugRpc['downloadStateData']>) {
-        return this._client.rawMethodCall('Debug', 'downloadStateData', args, []).then((res) => {
+        return this._internal.client.rawMethodCall('Debug', 'downloadStateData', args, []).then((res) => {
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -288,40 +295,40 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         })
     }
     sendToRemoteInspector(...args: Parameters<IDebugRpc['sendToRemoteInspector']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Debug', 'sendToRemoteInspector', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     subscribeToEvents(...args: Parameters<IDebugRpc['subscribeToEvents']>) {
-        return this._client.rawMethodCall('Debug', 'subscribeToEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Debug', 'subscribeToEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._addEvent(args[0])
+                this._internal.addKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     unsubscribeFromEvents(...args: Parameters<IDebugRpc['unsubscribeFromEvents']>) {
-        if (!this._client.isWebSocket()) {
+        if (!this._internal.client.isWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        return this._client.rawMethodCall('Debug', 'unsubscribeFromEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Debug', 'unsubscribeFromEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._removeEvent(args[0])
+                this._internal.removeKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
 }
 
-export function makeDebugRpc(client: DecthingsClient, addEvent: (id: string) => void, removeEvent: (id: string) => void): IDebugRpc {
-    const rpc = new DebugRpc(client, addEvent, removeEvent)
+export function makeDebugRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): IDebugRpc {
+    const rpc = new DebugRpc(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Debug') {
             if (eventName === 'stdout' || eventName === 'stderr') {
                 rpc.emit(eventName, params[0], data[0])
             } else {
                 if (eventName === 'exit') {
-                    removeEvent(params[0])
+                    removeKeepalive(params[0])
                 }
                 rpc.emit(eventName, ...params)
             }
@@ -622,13 +629,23 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
 }
 
 class LanguageRpc extends EventEmitter implements ILanguageRpc {
-    constructor(private _client: DecthingsClient, private _addEvent: (id: string) => void, private _removeEvent: (id: string) => void) {
+    _internal: {
+        client: DecthingsClient
+        addKeepalive: (id: string) => void
+        removeKeepalive: (id: string) => void
+    }
+    constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
+        this._internal = {
+            client,
+            addKeepalive,
+            removeKeepalive
+        }
     }
     startLanguageServer(...args: Parameters<ILanguageRpc['startLanguageServer']>) {
-        return this._client.rawMethodCall('Language', 'startLanguageServer', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Language', 'startLanguageServer', args, [], true).then((res) => {
             if (res.result) {
-                this._addEvent(res.result.languageServerId)
+                this._internal.addKeepalive(res.result.languageServerId)
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
@@ -639,32 +656,32 @@ class LanguageRpc extends EventEmitter implements ILanguageRpc {
         }
         const newArgs = [...args]
         newArgs.splice(1, 1)
-        return this._client
+        return this._internal.client
             .rawMethodCall('Language', 'writeToLanguageServer', newArgs, [args[1]])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     unsubscribeFromEvents(...args: Parameters<ILanguageRpc['unsubscribeFromEvents']>) {
-        if (!this._client.isWebSocket()) {
+        if (!this._internal.client.isWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        return this._client.rawMethodCall('Language', 'unsubscribeFromEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Language', 'unsubscribeFromEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._removeEvent(args[0])
+                this._internal.removeKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
 }
 
-export function makeLanguageRpc(client: DecthingsClient, addEvent: (id: string) => void, removeEvent: (id: string) => void): ILanguageRpc {
-    const rpc = new LanguageRpc(client, addEvent, removeEvent)
+export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): ILanguageRpc {
+    const rpc = new LanguageRpc(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Language') {
             if (eventName === 'data') {
                 rpc.emit(eventName, params[0], data[0])
             } else {
                 if (eventName === 'exit') {
-                    removeEvent(params[0])
+                    removeKeepalive(params[0])
                 }
                 rpc.emit(eventName, ...params)
             }
@@ -941,34 +958,46 @@ export function makePersistentLauncherRpc(client: DecthingsClient): IPersistentL
 }
 
 class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
-    constructor(private _client: DecthingsClient, private _addEvent: (id: string) => void, private _removeEvent: (id: string) => void) {
+    _internal: {
+        client: DecthingsClient
+        addKeepalive: (id: string) => void
+        removeKeepalive: (id: string) => void
+    }
+    constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
+        this._internal = {
+            client,
+            addKeepalive,
+            removeKeepalive
+        }
     }
     spawnCommand(...args: Parameters<ISpawnedRpc['spawnCommand']>) {
         const subscribed = args[4] !== false
-        return this._client.rawMethodCall('Spawned', 'spawnCommand', args, [], subscribed).then((res) => {
+        return this._internal.client.rawMethodCall('Spawned', 'spawnCommand', args, [], subscribed).then((res) => {
             if (subscribed && res.result) {
-                this._addEvent(res.result.spawnedCommandId)
+                this._internal.addKeepalive(res.result.spawnedCommandId)
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     spawnCommandForModel(...args: Parameters<ISpawnedRpc['spawnCommandForModel']>) {
         const subscribed = args[5] !== false
-        return this._client.rawMethodCall('Spawned', 'spawnCommandForModel', args, [], subscribed).then((res) => {
+        return this._internal.client.rawMethodCall('Spawned', 'spawnCommandForModel', args, [], subscribed).then((res) => {
             if (subscribed && res.result) {
-                this._addEvent(res.result.spawnedCommandId)
+                this._internal.addKeepalive(res.result.spawnedCommandId)
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     terminateSpawnedCommand(...args: Parameters<ISpawnedRpc['terminateSpawnedCommand']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Spawned', 'terminateSpawnedCommand', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     getSpawnedCommands(...args: Parameters<ISpawnedRpc['getSpawnedCommands']>) {
-        return this._client.rawMethodCall('Spawned', 'getSpawnedCommands', args, []).then((res) => (res.result ? { result: res.result } : { error: res.error }))
+        return this._internal.client
+            .rawMethodCall('Spawned', 'getSpawnedCommands', args, [])
+            .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     writeToSpawnedCommand(...args: Parameters<ISpawnedRpc['writeToSpawnedCommand']>) {
         let data: Buffer
@@ -982,40 +1011,40 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         }
         const newArgs = [...args]
         newArgs.splice(1, 1)
-        return this._client
+        return this._internal.client
             .rawMethodCall('Spawned', 'writeToSpawnedCommand', newArgs, [data])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     subscribeToEvents(...args: Parameters<ISpawnedRpc['subscribeToEvents']>) {
-        return this._client.rawMethodCall('Spawned', 'subscribeToEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Spawned', 'subscribeToEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._addEvent(args[0])
+                this._internal.addKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     unsubscribeFromEvents(...args: Parameters<ISpawnedRpc['unsubscribeFromEvents']>) {
-        if (!this._client.isWebSocket()) {
+        if (!this._internal.client.isWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        return this._client.rawMethodCall('Spawned', 'unsubscribeFromEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Spawned', 'unsubscribeFromEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._removeEvent(args[0])
+                this._internal.removeKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
 }
 
-export function makeSpawnedRpc(client: DecthingsClient, addEvent: (id: string) => void, removeEvent: (id: string) => void): ISpawnedRpc {
-    const rpc = new SpawnedRpc(client, addEvent, removeEvent)
+export function makeSpawnedRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): ISpawnedRpc {
+    const rpc = new SpawnedRpc(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Spawned') {
             if (eventName === 'stdout' || eventName === 'stderr') {
                 rpc.emit(eventName, params[0], data[0])
             } else {
                 if (eventName === 'exit') {
-                    removeEvent(params[0])
+                    removeKeepalive(params[0])
                 }
                 rpc.emit(eventName, ...params)
             }
@@ -1069,25 +1098,35 @@ export function makeTeamRpc(client: DecthingsClient): ITeamRpc {
 }
 
 class TerminalRpc extends EventEmitter implements ITerminalRpc {
-    constructor(private _client: DecthingsClient, private _addEvent: (id: string) => void, private _removeEvent: (id: string) => void) {
+    _internal: {
+        client: DecthingsClient
+        addKeepalive: (id: string) => void
+        removeKeepalive: (id: string) => void
+    }
+    constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
+        this._internal = {
+            client,
+            addKeepalive,
+            removeKeepalive
+        }
     }
     launchTerminalSession(...args: Parameters<ITerminalRpc['launchTerminalSession']>) {
         const subscribed = args[3] !== false
-        return this._client.rawMethodCall('Terminal', 'launchTerminalSession', args, [], subscribed).then((res) => {
+        return this._internal.client.rawMethodCall('Terminal', 'launchTerminalSession', args, [], subscribed).then((res) => {
             if (subscribed && res.result) {
-                this._addEvent(res.result.terminalSessionId)
+                this._internal.addKeepalive(res.result.terminalSessionId)
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     terminateTerminalSession(...args: Parameters<ITerminalRpc['terminateTerminalSession']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Terminal', 'terminateTerminalSession', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     getTerminalSessions(...args: Parameters<ITerminalRpc['getTerminalSessions']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Terminal', 'getTerminalSessions', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
@@ -1103,50 +1142,50 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
         }
         const newArgs = [...args]
         newArgs.splice(1, 1)
-        return this._client
+        return this._internal.client
             .rawMethodCall('Terminal', 'writeToTerminalSession', newArgs, [data])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     resizeTerminalSession(...args: Parameters<ITerminalRpc['resizeTerminalSession']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Terminal', 'resizeTerminalSession', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     addFilesystemAccessForTerminalSession(...args: Parameters<ITerminalRpc['addFilesystemAccessForTerminalSession']>) {
-        return this._client
+        return this._internal.client
             .rawMethodCall('Terminal', 'addFilesystemAccessForTerminalSession', args, [])
             .then((res) => (res.result ? { result: res.result } : { error: res.error }))
     }
     subscribeToEvents(...args: Parameters<ITerminalRpc['subscribeToEvents']>) {
-        return this._client.rawMethodCall('Terminal', 'subscribeToEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Terminal', 'subscribeToEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._addEvent(args[0])
+                this._internal.addKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
     unsubscribeFromEvents(...args: Parameters<ITerminalRpc['unsubscribeFromEvents']>) {
-        if (!this._client.isWebSocket()) {
+        if (!this._internal.client.isWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        return this._client.rawMethodCall('Terminal', 'unsubscribeFromEvents', args, [], true).then((res) => {
+        return this._internal.client.rawMethodCall('Terminal', 'unsubscribeFromEvents', args, [], true).then((res) => {
             if (res.result) {
-                this._removeEvent(args[0])
+                this._internal.removeKeepalive(args[0])
             }
             return res.result ? { result: res.result } : { error: res.error }
         })
     }
 }
 
-export function makeTerminalRpc(client: DecthingsClient, addEvent: (id: string) => void, removeEvent: (id: string) => void): ITerminalRpc {
-    const rpc = new TerminalRpc(client, addEvent, removeEvent)
+export function makeTerminalRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): ITerminalRpc {
+    const rpc = new TerminalRpc(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Terminal') {
             if (eventName === 'data') {
                 rpc.emit(eventName, params[0], data[0])
             } else {
                 if (eventName === 'exit') {
-                    removeEvent(params[0])
+                    removeKeepalive(params[0])
                 }
                 rpc.emit(eventName, ...params)
             }

@@ -16,10 +16,6 @@ import {
 import { IDebugRpc, ITerminalRpc, IDatasetRpc, IModelRpc, ITeamRpc, IUserRpc, ILanguageRpc, IPersistentLauncherRpc, IFsRpc } from './RpcInterfaces'
 import { ISpawnedRpc } from './RpcInterfaces/SpawnedRpc'
 
-function isResponseMessage(message: Protocol.ResponseMessage | Protocol.EventMessage): message is Protocol.ResponseMessage {
-    return typeof (message as any).id === 'number'
-}
-
 export class DecthingsClientClosedError extends Error {
     constructor() {
         super('The RPC call failed because the DecthingsClient was closed, by calling client.close().')
@@ -86,165 +82,220 @@ export class DecthingsClient extends EventEmitter {
     private static WebSocket: (address: string) => InstanceType<typeof import('ws')>
     private static fetch: typeof fetch
 
-    private wsServerAddress: string
-    private httpServerAddress: string
-    private mode: 'http' | 'ws' | 'mixed'
+    private _wsServerAddress: string
+    private _httpServerAddress: string
+    private _mode: 'http' | 'ws' | 'mixed'
 
     #_apiKey?: string
     private _closed = false
-    private _waitingResponses = new Map<number, { resolve: (result: { error?: any; result?: any; data: Buffer[] }) => void; reject: (reason: any) => void }>()
-    private _listeningForEventIds = new Set<string>()
-    private _idCounter = 1
 
     private _ws: {
-        promise: Promise<import('ws')>
+        keepAlive: Set<string>
+        call: (api: string, method: string, params: any[], data: Buffer[]) => Promise<{ response: Protocol.Response; data: Buffer[] }>
         dispose: () => void
+        disposeIfUnused: () => void
     }
 
     private _createSocket() {
+        const waitingResponses = new Map<number, { resolve: (value: { response: Protocol.Response; data: Buffer[] }) => void; reject: (reason: any) => void }>()
+
         let disposed = false
-        this._ws = {
-            dispose: () => {
-                disposed = true
-            },
-            promise: new Promise(async (resolve) => {
-                while (true) {
+        let onDisposed: () => void
+
+        const socketPromise = new Promise<import('ws')>(async (resolve) => {
+            while (true) {
+                if (disposed) {
+                    resolve(null)
+                    return
+                }
+
+                const ws = DecthingsClient.WebSocket(this._wsServerAddress)
+
+                ws.addEventListener('message', (data) => {
                     if (disposed) {
-                        resolve(null)
                         return
                     }
-
-                    const ws = DecthingsClient.WebSocket(this.wsServerAddress)
-
-                    ws.addEventListener('message', (data) => {
-                        const parsed = Protocol.deserialize<Protocol.ResponseMessage | Protocol.EventMessage>(
-                            typeof data.data === 'string'
-                                ? Buffer.from(data.data)
-                                : Buffer.isBuffer(data.data)
-                                ? data.data
-                                : Array.isArray(data.data)
-                                ? Buffer.concat(data.data)
-                                : Buffer.from(data.data)
-                        )
-                        if (isResponseMessage(parsed.message)) {
-                            const waiting = this._waitingResponses.get(parsed.message.id)
-                            if (waiting) {
-                                this._waitingResponses.delete(parsed.message.id)
-                                waiting.resolve({ result: parsed.message.result, error: parsed.message.error, data: parsed.data })
-                            }
-                            if (this._waitingResponses.size === 0 && this._listeningForEventIds.size === 0) {
-                                setTimeout(() => {
-                                    if (this._waitingResponses.size === 0 && this._listeningForEventIds.size === 0) {
-                                        if (!this._ws) {
-                                            return
-                                        }
-                                        const _ws = this._ws
-                                        delete this._ws
-                                        _ws.dispose()
-                                    }
-                                }, 1000)
-                            }
-                        } else {
-                            this.emit('event', parsed.message.api, parsed.message.event, parsed.message.params, parsed.data)
+                    const parsed = Protocol.deserializeForWs(
+                        typeof data.data === 'string'
+                            ? Buffer.from(data.data)
+                            : Buffer.isBuffer(data.data)
+                            ? data.data
+                            : Array.isArray(data.data)
+                            ? Buffer.concat(data.data)
+                            : Buffer.from(data.data)
+                    )
+                    if (parsed.response) {
+                        const [messageId, response] = parsed.response
+                        const waiting = waitingResponses.get(messageId)
+                        if (waiting) {
+                            waitingResponses.delete(messageId)
+                            waiting.resolve({ response, data: parsed.data })
                         }
-                    })
+                        this._ws.disposeIfUnused()
+                    } else {
+                        this.emit('event', parsed.event.api, parsed.event.event, parsed.event.params, parsed.data)
+                    }
+                })
 
-                    const didOpen = await new Promise<boolean>((_resolve) => {
-                        const closedListener = (ev: import('ws').CloseEvent) => {
-                            this.emit('ws_close', ev)
-                            _resolve(false)
+                const didOpen = await new Promise<boolean>((_resolve) => {
+                    const closedListener = (ev: import('ws').CloseEvent) => {
+                        onDisposed = null
+                        this.emit('ws_close', ev)
+                        _resolve(false)
+                    }
+                    const errorListener = (ev: import('ws').ErrorEvent) => {
+                        onDisposed = null
+                        this.emit('ws_error', ev)
+                        _resolve(false)
+                    }
+                    const openListener = () => {
+                        ws.removeEventListener('close', closedListener)
+                        ws.removeEventListener('error', errorListener)
+
+                        _resolve(true)
+                        resolve(ws)
+
+                        if (disposed) {
+                            ws.close()
+                            return
                         }
-                        const errorListener = (ev: import('ws').ErrorEvent) => {
+
+                        onDisposed = () => {
+                            ws.close()
+                        }
+
+                        ws.addEventListener('error', (ev) => {
                             this.emit('ws_error', ev)
-                            _resolve(false)
-                        }
-                        const openListener = () => {
-                            ws.removeEventListener('close', closedListener)
-                            ws.removeEventListener('error', errorListener)
-
-                            _resolve(true)
-                            resolve(ws)
-
+                        })
+                        ws.addEventListener('close', (ev) => {
+                            this.emit('ws_close', ev)
                             if (disposed) {
-                                ws.close()
                                 return
                             }
-
-                            ws.addEventListener('error', (ev) => {
-                                this.emit('ws_error', ev)
+                            waitingResponses.forEach((handler) => {
+                                handler.reject(new DecthingsClientWebSocketClosedError(ev))
                             })
-                            ws.addEventListener('close', (ev) => {
-                                this.emit('ws_close', ev)
+                            waitingResponses.clear()
+                            this.emit('subscriptions_removed')
+                            this._ws.dispose()
+                        })
+                        this.emit('ws_open')
+
+                        _resolve(true)
+                    }
+                    ws.addEventListener('close', closedListener)
+                    ws.addEventListener('error', errorListener)
+                    ws.addEventListener('open', openListener)
+
+                    onDisposed = () => {
+                        ws.removeAllListeners()
+                        ws.close()
+                        resolve(null)
+                        _resolve(true)
+                    }
+                })
+
+                if (didOpen) {
+                    return
+                }
+
+                await new Promise((_resolve) => setTimeout(_resolve, 100))
+            }
+        })
+
+        let idCounter = 0
+        const processingRequests = new Set<number>()
+
+        this._ws = {
+            keepAlive: new Set(),
+            call: (api, method, params, data) => {
+                const id = idCounter++
+                processingRequests.add(id)
+                const message: Protocol.RequestMessage = {
+                    api,
+                    method,
+                    params,
+                    apiKey: this.#_apiKey
+                }
+                return new Promise((resolve, reject) => {
+                    waitingResponses.set(id, {
+                        resolve: (val) => {
+                            resolve(val)
+                            setImmediate(() => {
                                 if (disposed) {
                                     return
                                 }
-                                this._waitingResponses.forEach((handler) => {
-                                    handler.reject(new DecthingsClientWebSocketClosedError(ev))
-                                })
-                                this._waitingResponses.clear()
-                                this._listeningForEventIds.clear()
-                                this.emit('subscriptions_removed')
-                                delete this._ws
+                                // We dispose processing in next tick in order to not dispose ws between request complete
+                                // and addKeepalive
+                                processingRequests.delete(id)
+                                this._ws.disposeIfUnused()
                             })
-                            this.emit('ws_open')
-
-                            _resolve(true)
-                        }
-                        ws.addEventListener('close', closedListener)
-                        ws.addEventListener('error', errorListener)
-                        ws.addEventListener('open', openListener)
+                        },
+                        reject
                     })
-
-                    if (didOpen) {
-                        return
-                    }
-
-                    await new Promise((_resolve) => setTimeout(_resolve, 100))
+                    socketPromise.then((socket) => {
+                        if (!socket) {
+                            return
+                        }
+                        socket.send(Protocol.serializeForWebsocket(id, message, data))
+                    })
+                })
+            },
+            dispose: () => {
+                disposed = true
+                waitingResponses.forEach((handler) => {
+                    handler.reject(new DecthingsClientClosedError())
+                })
+                onDisposed && onDisposed()
+                delete this._ws
+            },
+            disposeIfUnused: () => {
+                if (processingRequests.size === 0 && this._ws.keepAlive.size === 0) {
+                    this._ws.dispose()
                 }
-            })
+            }
         }
     }
 
     constructor(options: DecthingsClientOptions = {}) {
         super()
 
-        this.wsServerAddress = options.wsServerAddress || defaultWsAddress
-        if (typeof this.wsServerAddress !== 'string') {
+        this._wsServerAddress = options.wsServerAddress || defaultWsAddress
+        if (typeof this._wsServerAddress !== 'string') {
             throw new Error('Invalid option: Expected wsServerAddress to be a string.')
         }
-        this.httpServerAddress = options.httpServerAddress || defaultHttpAddress
-        if (typeof this.httpServerAddress !== 'string') {
+        this._httpServerAddress = options.httpServerAddress || defaultHttpAddress
+        if (typeof this._httpServerAddress !== 'string') {
             throw new Error('Invalid option: Expected httpServerAddress to be a string.')
         }
-        this.mode = options.mode || 'mixed'
-        if (this.mode !== 'http' && this.mode !== 'mixed' && this.mode !== 'ws') {
+        this._mode = options.mode || 'mixed'
+        if (this._mode !== 'http' && this._mode !== 'mixed' && this._mode !== 'ws') {
             throw new Error('Invalid option: Expected mode to be "http", "ws" or "mixed".')
         }
 
-        const addEvent = (id: string) => {
-            this._listeningForEventIds.add(id)
-        }
-        const removeEvent = (id: string) => {
-            this._listeningForEventIds.delete(id)
-            if (this._listeningForEventIds.size === 0 && this._waitingResponses.size === 0) {
-                if (!this._ws) {
-                    return
-                }
-                const _ws = this._ws
-                delete this._ws
-                _ws.dispose()
+        const addKeepalive = (id: string) => {
+            if (!this._ws) {
+                return
             }
+            this._ws.keepAlive.add(id)
+        }
+        const removeKeepalive = (id: string) => {
+            if (!this._ws) {
+                return
+            }
+            this._ws.keepAlive.delete(id)
+            this._ws.disposeIfUnused()
         }
 
         this.dataset = makeDatasetRpc(this)
-        this.debug = makeDebugRpc(this, addEvent, removeEvent)
+        this.debug = makeDebugRpc(this, addKeepalive, removeKeepalive)
         this.fs = makeFsRpc(this)
-        this.language = makeLanguageRpc(this, addEvent, removeEvent)
+        this.language = makeLanguageRpc(this, addKeepalive, removeKeepalive)
         this.model = makeModelRpc(this)
         this.persistentLauncher = makePersistentLauncherRpc(this)
-        this.spawned = makeSpawnedRpc(this, addEvent, removeEvent)
+        this.spawned = makeSpawnedRpc(this, addKeepalive, removeKeepalive)
         this.team = makeTeamRpc(this)
-        this.terminal = makeTerminalRpc(this, addEvent, removeEvent)
+        this.terminal = makeTerminalRpc(this, addKeepalive, removeKeepalive)
         this.user = makeUserRpc(this)
 
         this.setApiKey(options.apiKey)
@@ -276,33 +327,24 @@ export class DecthingsClient extends EventEmitter {
         if (this._closed) {
             throw new DecthingsClientClosedError()
         }
-        if (!this._ws && (forceWebSocket || this.mode === 'ws') && this.mode !== 'http') {
+        if (!this._ws && (forceWebSocket || this._mode === 'ws') && this._mode !== 'http') {
             this._createSocket()
+        }
+        let res: {
+            response: Protocol.Response
+            data: Buffer[]
         }
         if (this._ws) {
             // Send over WebSocket
-            const id = this._idCounter++
-            const message: Protocol.RequestMessage = {
-                id,
-                api,
-                method,
-                params,
-                apiKey: this.#_apiKey
-            }
-            return new Promise((resolve, reject) => {
-                this._waitingResponses.set(id, { resolve, reject })
-                this._ws.promise.then((socket) => {
-                    socket.send(Protocol.serialize(message, data))
-                })
-            })
+            res = await this._ws.call(api, method, params, data)
         } else {
             // Send over HTTP
             const headers: string[][] = [['Content-Type', 'application/octet-stream']]
             if (this.#_apiKey) {
                 headers.push(['Authorization', `Bearer ${this.#_apiKey}`])
             }
-            const body = Protocol.serialize(params, data)
-            const response = await DecthingsClient.fetch(`${this.httpServerAddress}/${api}/${method}`, {
+            const body = Protocol.serializeForHttp(params, data)
+            const response = await DecthingsClient.fetch(`${this._httpServerAddress}/${api}/${method}`, {
                 method: 'POST',
                 body,
                 headers
@@ -311,16 +353,19 @@ export class DecthingsClient extends EventEmitter {
                 throw response
             }
             const responseBody = Buffer.from(await response.arrayBuffer())
-            const parsed = Protocol.deserialize<{ result?: any; error?: any }>(responseBody)
-            return parsed.message.error ? { error: parsed.message.error, data: parsed.data } : { result: parsed.message.result, data: parsed.data }
+            res = Protocol.deserializeForHttp(responseBody)
         }
+        if (res.response.error) {
+            return { error: res.response.error, data: res.data }
+        }
+        return { result: res.response.result, data: res.data }
     }
 
     /**
      * Returns true if this client currently uses WebSocket connection instead of HTTP.
      */
     public isWebSocket(): boolean {
-        return !this._closed && Boolean(this._ws)
+        return Boolean(this._ws)
     }
 
     public setApiKey(apiKey?: string) {
@@ -338,11 +383,7 @@ export class DecthingsClient extends EventEmitter {
             return
         }
         this._closed = true
-        this._ws && this._ws.dispose()
-        delete this._ws
         this.emit('close')
-        this._waitingResponses.forEach((waiting) => {
-            waiting.reject(new DecthingsClientClosedError())
-        })
+        this._ws && this._ws.dispose()
     }
 }

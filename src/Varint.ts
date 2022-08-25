@@ -38,17 +38,17 @@ export function serializeVarInt64(value: number | bigint): Buffer {
     } else if (b < 2 ** 16) {
         const buf = Buffer.alloc(3)
         buf.writeUInt8(253, 0)
-        buf.writeInt16BE(Number(b), 1)
+        buf.writeUint16BE(Number(b), 1)
         return buf
     } else if (b < 2 ** 32) {
         const buf = Buffer.alloc(5)
         buf.writeUInt8(254, 0)
-        buf.writeInt32BE(Number(b), 1)
+        buf.writeUint32BE(Number(b), 1)
         return buf
     } else {
         const buf = Buffer.alloc(9)
         buf.writeUInt8(255, 0)
-        buf.writeBigInt64BE(b, 1)
+        buf.writeBigUint64BE(b, 1)
         return buf
     }
 }
@@ -61,13 +61,13 @@ export function deserializeVarInt64(data: Buffer): [bigint, number] {
         result = BigInt(data.readInt8(0))
         len = 1
     } else if (first === 253) {
-        result = BigInt(data.readInt16BE(1))
+        result = BigInt(data.readUint16BE(1))
         len = 3
     } else if (first === 254) {
-        result = BigInt(data.readInt32BE(1))
+        result = BigInt(data.readUint32BE(1))
         len = 5
     } else {
-        result = data.readBigInt64BE(1)
+        result = data.readBigUint64BE(1)
         len = 9
     }
     if (result % BigInt(2) === BigInt(0)) {
@@ -102,7 +102,7 @@ export function serializeVarUint64(value: number | bigint): Buffer {
 export function deserializeVarUint64(data: Buffer): [bigint, number] {
     const first = data.readUint8(0)
     if (first < 253) {
-        return [BigInt(data.readUInt8(0)), 1]
+        return [BigInt(first), 1]
     } else if (first === 253) {
         return [BigInt(data.readUInt16BE(1)), 3]
     } else if (first === 254) {
