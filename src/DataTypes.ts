@@ -29,17 +29,17 @@ export type DataType =
 /**
  * Specifies rules for the shape and allowed data types for a Data or DataElement.
  */
- export type DataRules = {
+export type DataRules = {
     /**
      * Dimensions of the data array.
      *
      * [] would mean a DataElement.
      * [1] would mean a Data that contains just a single element, [2] would mean two DataElements and so on.
-     * [2, 1] would mean a Data that containx two arrays that each contain one DataElement.
+     * [2, 1] would mean a Data that contains two arrays that each contain one DataElement.
      * [2, 2, 1] would mean a Data that contains two arrays that each contain two arrays that each contain
      * one DataElement, and so on.
      *
-     * Providing a value of -1 in any place would allow dimension to be of any length.
+     * Providing a value of -1 in any place would allow that dimension to be of any length.
      */
     shape: number[]
     /**
@@ -449,7 +449,7 @@ export class DataElement {
         if (!this.isImage()) {
             throw new Error('DataElement is not an image.')
         }
-        return { format: this._data.slice(0, 3).toString(), data: this._data.slice(3) }
+        return { format: this._data.subarray(0, 3).toString(), data: this._data.subarray(3) }
     }
     /**
      * Creates a new DataElement which holds an image.
@@ -481,7 +481,7 @@ export class DataElement {
         if (!this.isAudio()) {
             throw new Error('DataElement is not audio.')
         }
-        return { format: this._data.slice(0, 3).toString(), data: this._data.slice(3) }
+        return { format: this._data.subarray(0, 3).toString(), data: this._data.subarray(3) }
     }
     /**
      * Creates a new DataElement which holds audio.
@@ -513,7 +513,7 @@ export class DataElement {
         if (!this.isVideo()) {
             throw new Error('DataElement is not a video.')
         }
-        return { format: this._data.slice(0, 3).toString(), data: this._data.slice(3) }
+        return { format: this._data.subarray(0, 3).toString(), data: this._data.subarray(3) }
     }
     /**
      * Creates a new DataElement which holds a video.
@@ -549,11 +549,11 @@ export class DataElement {
         let pos = 0
         while (pos < this._data.byteLength) {
             const nameLength = this._data.readUInt8(pos)
-            const name = this._data.slice(pos + 1, pos + 1 + nameLength).toString()
+            const name = this._data.subarray(pos + 1, pos + 1 + nameLength).toString()
             pos += 1 + nameLength
-            const [dataLength, vLength] = Varint.deserializeVarUint64(this._data.slice(pos))
+            const [dataLength, vLength] = Varint.deserializeVarUint64(this._data.subarray(pos))
             const dataLengthNum = Number(dataLength)
-            const data = Data.deserializeDataOrDataElement(this._data.slice(pos + vLength, pos + vLength + dataLengthNum))
+            const data = Data.deserializeDataOrDataElement(this._data.subarray(pos + vLength, pos + vLength + dataLengthNum))
             pos += vLength + dataLengthNum
 
             entries.set(name, data)
@@ -707,10 +707,11 @@ export class DataElement {
             return `${format} video, ${data.byteLength} bytes`
         }
         const d = this.getDict()
-        const s = `{${Array.from(d.entries()).map(([key, value]) => `"${key}": ${value.toString()}`).join(', ')}}`
+        const s = `{${Array.from(d.entries())
+            .map(([key, value]) => `"${key}": ${value.toString()}`)
+            .join(', ')}}`
         return `dict, ${s}`
     }
-
 
     public toString() {
         return `DataElement(${this.stringRepresentation()})`
@@ -727,7 +728,7 @@ export class DataElement {
      * Creates a DataElement from a binary representation.
      */
     public static deserialize(data: Buffer): DataElement {
-        return new DataElement(data.readUInt8(0), data.slice(1))
+        return new DataElement(data.readUInt8(0), data.subarray(1))
     }
 
     public _serializeWithLength(): Buffer {
@@ -752,21 +753,21 @@ export class DataElement {
 
     public static _deserializeWithLength(type: number, data: Buffer): [DataElement, number] {
         if (type === typeSpecifiers.i8 || type === typeSpecifiers.u8) {
-            return [new DataElement(type, data.slice(0, 1)), 1]
+            return [new DataElement(type, data.subarray(0, 1)), 1]
         } else if (type === typeSpecifiers.i16 || type === typeSpecifiers.u16) {
-            return [new DataElement(type, data.slice(0, 2)), 2]
+            return [new DataElement(type, data.subarray(0, 2)), 2]
         } else if (type === typeSpecifiers.f32 || type === typeSpecifiers.i32 || type === typeSpecifiers.u32) {
-            return [new DataElement(type, data.slice(0, 4)), 4]
+            return [new DataElement(type, data.subarray(0, 4)), 4]
         } else if (type === typeSpecifiers.f64) {
-            return [new DataElement(type, data.slice(0, 8)), 8]
+            return [new DataElement(type, data.subarray(0, 8)), 8]
         } else if (type === typeSpecifiers.i64) {
             const l = Varint.getVarInt64Length(data)
-            return [new DataElement(type, data.slice(0, l)), l]
+            return [new DataElement(type, data.subarray(0, l)), l]
         } else if (type === typeSpecifiers.u64) {
             const l = Varint.getVarUint64Length(data)
-            return [new DataElement(type, data.slice(0, l)), l]
+            return [new DataElement(type, data.subarray(0, l)), l]
         } else if (type === typeSpecifiers.boolean) {
-            return [new DataElement(type, data.slice(0, 1)), 1]
+            return [new DataElement(type, data.subarray(0, 1)), 1]
         } else if (
             type === typeSpecifiers.dict ||
             type === typeSpecifiers.string ||
@@ -777,7 +778,7 @@ export class DataElement {
         ) {
             const [length, vLength] = Varint.deserializeVarUint64(data)
             const lengthNum = Number(length)
-            return [new DataElement(type, data.slice(vLength, vLength + lengthNum)), vLength + lengthNum]
+            return [new DataElement(type, data.subarray(vLength, vLength + lengthNum)), vLength + lengthNum]
         } else {
             throw new Error('Could not parse DataElement.')
         }
@@ -947,10 +948,8 @@ export class Data {
             return
         }
         if (items[0] instanceof Data) {
-            let mustMatchShape: number[]
-            if (this._inner.length === 0) {
-                mustMatchShape = items[0]._shape
-            } else {
+            let mustMatchShape: number[] = null
+            if (this._inner.length !== 0) {
                 if (this._shape.length === 1) {
                     throw new Error('Mismatched shape. A Data must either contain only DataElement or only Data.')
                 }
@@ -963,17 +962,21 @@ export class Data {
                     }
                     throw new Error('Mismatched shape. A Data must either contain only DataElement or only Data.')
                 }
-                if (el._shape.length !== mustMatchShape.length) {
-                    throw new Error(`Mismatched shape. All Data in this Data must have the same number of dimensions.`)
-                }
-                el._shape.forEach((n, i) => {
-                    if (n !== mustMatchShape[i]) {
-                        mustMatchShape[i] = -1
+                if (mustMatchShape === null) {
+                    mustMatchShape = el._shape
+                } else {
+                    if (el._shape.length !== mustMatchShape.length) {
+                        throw new Error(`Mismatched shape. All Data in this Data must have the same number of dimensions.`)
                     }
-                })
+                    el._shape.forEach((n, i) => {
+                        if (n !== mustMatchShape[i]) {
+                            mustMatchShape[i] = -1
+                        }
+                    })
+                }
             }
             ;(this._inner as Data[]).push(...(items as Data[]))
-            this._shape = [this._inner.length, ...mustMatchShape]
+            this._shape = [this._inner.length, ...(mustMatchShape || items[0]._shape)]
         } else {
             for (const el of items) {
                 if (!(el instanceof DataElement)) {
@@ -1049,7 +1052,9 @@ export class Data {
     }
 
     public stringRepresentation() {
-        return `[${this.values().map((x: Data | DataElement) => `(${x.stringRepresentation()})`).join(', ')}]`
+        return `[${this.values()
+            .map((x: Data | DataElement) => `(${x.stringRepresentation()})`)
+            .join(', ')}]`
     }
 
     public toString() {
@@ -1078,7 +1083,7 @@ export class Data {
      * Create a binary representation of this Data.
      */
     public serialize(): Buffer {
-        const [entries, length] = this._serialize()
+        const [entries, _length] = this._serialize()
         const serialized = Buffer.concat([Buffer.from([typeSpecifiers.array]), ...entries])
         return serialized
     }
@@ -1090,9 +1095,9 @@ export class Data {
 
                 let pos = 0
                 while (pos < data.byteLength) {
-                    const [length, vLength] = Varint.deserializeVarUint64(data.slice(pos))
+                    const [length, vLength] = Varint.deserializeVarUint64(data.subarray(pos))
                     const lengthNum = Number(length)
-                    const deserialized = Data._deserialize(data.slice(pos + vLength, pos + vLength + lengthNum))
+                    const deserialized = Data._deserialize(data.subarray(pos + vLength, pos + vLength + lengthNum))
                     entries.push(deserialized)
                     pos += vLength + lengthNum
                 }
@@ -1103,10 +1108,10 @@ export class Data {
 
                 let pos = 0
                 while (pos < data.byteLength) {
-                    const [length, vLength] = Varint.deserializeVarUint64(data.slice(pos))
+                    const [length, vLength] = Varint.deserializeVarUint64(data.subarray(pos))
                     const lengthNum = Number(length)
                     const nextSameType = data.readUInt8(pos + vLength)
-                    const deserialized = Data._deserialize(data.slice(pos + vLength + 1, pos + vLength + 1 + lengthNum), nextSameType)
+                    const deserialized = Data._deserialize(data.subarray(pos + vLength + 1, pos + vLength + 1 + lengthNum), nextSameType)
                     entries.push(deserialized)
                     pos += vLength + 1 + lengthNum
                 }
@@ -1117,7 +1122,7 @@ export class Data {
 
                 let pos = 0
                 while (pos < data.byteLength) {
-                    const [element, length] = DataElement._deserializeWithLength(sameType, data.slice(pos))
+                    const [element, length] = DataElement._deserializeWithLength(sameType, data.subarray(pos))
                     entries.push(element)
                     pos += length
                 }
@@ -1131,20 +1136,20 @@ export class Data {
             while (pos < data.byteLength) {
                 const type = data.readUInt8(pos)
                 if (type === typeSpecifiers.array) {
-                    const [length, vLength] = Varint.deserializeVarUint64(data.slice(pos + 1))
+                    const [length, vLength] = Varint.deserializeVarUint64(data.subarray(pos + 1))
                     const lengthNum = Number(length)
-                    const deserialized = Data._deserialize(data.slice(pos + 1 + vLength, pos + 1 + vLength + lengthNum))
+                    const deserialized = Data._deserialize(data.subarray(pos + 1 + vLength, pos + 1 + vLength + lengthNum))
                     entries.push(deserialized)
                     pos += vLength + 1 + lengthNum
                 } else if (type === typeSpecifiers.arrayWithSameType) {
-                    const [length, vLength] = Varint.deserializeVarUint64(data.slice(pos + 1))
+                    const [length, vLength] = Varint.deserializeVarUint64(data.subarray(pos + 1))
                     const lengthNum = Number(length)
                     const nextSameType = data.readUInt8(pos + 1 + vLength)
-                    const deserialized = Data._deserialize(data.slice(pos + 2 + vLength, pos + 2 + vLength + lengthNum), nextSameType)
+                    const deserialized = Data._deserialize(data.subarray(pos + 2 + vLength, pos + 2 + vLength + lengthNum), nextSameType)
                     entries.push(deserialized)
                     pos += 2 + vLength + lengthNum
                 } else {
-                    const [element, length] = DataElement._deserializeWithLength(type, data.slice(pos + 1))
+                    const [element, length] = DataElement._deserializeWithLength(type, data.subarray(pos + 1))
                     entries.push(element)
                     pos += 1 + length
                 }
@@ -1164,10 +1169,10 @@ export class Data {
     public static deserialize(data: Buffer): Data {
         const type = data.readUInt8(0)
         if (type === typeSpecifiers.array) {
-            return Data._deserialize(data.slice(1))
+            return Data._deserialize(data.subarray(1))
         } else if (type === typeSpecifiers.arrayWithSameType) {
             const sameType = data.readUInt8(1)
-            return Data._deserialize(data.slice(2), sameType)
+            return Data._deserialize(data.subarray(2), sameType)
         } else {
             throw new Error('Could not parse Data.')
         }
@@ -1206,6 +1211,5 @@ export type Parameter = {
  */
 export type ParameterProvider = {
     name: string
-    data: Data | Buffer | { type: 'dataset'; datasetId: string; shuffle?: boolean }
-    maxReads?: number
+    data: Data | Buffer | { type: 'dataset'; datasetId: string }
 }

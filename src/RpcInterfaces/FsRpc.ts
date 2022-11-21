@@ -1,497 +1,404 @@
 import { GenericError } from './Error'
 
-export type RecursiveFolder = { name: string; items?: RecursiveFolder[] }
+export type Stat = {
+    mode: number
+    nlink: number
+    rdev: number
+    size: number
+    blksize: number
+    blocks: number
+    atime: number
+    atime_nsec: number
+    mtime: number
+    mtime_nsec: number
+    ctime: number
+    ctime_nsec: number
+}
 
 export interface IFsRpc {
     /**
-     * Create a file.
+     * Get file information from its name.
      *
      * Errors:
-     *
-     * ENOENT - A directory component in *pathname* does not exist or is a dangling symbolic link.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * EEXIST - *pathname* already exists.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * ESTALE - The parent inode does not exist.
+     * ENOENT - The name does not exist within the directory.
+     * ENOTDIR - The parent inode was not a directory.
      */
-    create(
+    lookup(
         modelId: string,
-        pathname: string | Buffer,
-        mode: number
+        snapshotId: string | null,
+        parent: number,
+        name: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'EEXIST' | 'ELOOP'
+                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'ENOENT' | 'ENOTDIR'
               }
             | GenericError
-        result?: {}
+        result?: {
+            inode: number
+            stat: Stat
+        }
     }>
+
+    /**
+     * Get file information from its inode number.
+     *
+     * Errors:
+     * ESTALE - The inode does not exist.
+     */
+    getattr(
+        modelId: string,
+        snapshotId: string | null,
+        inode: number
+    ): Promise<{
+        error?:
+            | {
+                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE'
+              }
+            | GenericError
+        result?: {
+            stat: Stat
+        }
+    }>
+
+    /**
+     * Set file information.
+     *
+     * Errors:
+     * ESTALE - The inode does not exist.
+     * EFBIG - The target size is too large.
+     * EISDIR - Attempted to resize a directory.
+     */
+    setattr(
+        modelId: string,
+        inode: number,
+        mode?: number,
+        size?: number,
+        atime?: {
+            sec: number
+            nsec: number
+        },
+        mtime?: {
+            sec: number
+            nsec: number
+        }
+    ): Promise<{
+        error?:
+            | {
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'EFBIG' | 'EISDIR'
+              }
+            | GenericError
+        result?: {
+            stat: Stat
+        }
+    }>
+
+    /**
+     * Create a regular or special file.
+     *
+     * Errors:
+     * ESTALE - The parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory.
+     * EEXIST - The name already exists within the directory.
+     */
+    mknod(
+        modelId: string,
+        parent: number,
+        name: string | Buffer,
+        mode: number,
+        dev: number
+    ): Promise<{
+        error?:
+            | {
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
+              }
+            | GenericError
+        result?: {
+            inode: number
+            stat: Stat
+        }
+    }>
+
     /**
      * Read from a file.
      *
      * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * EISDIR - *pathname* refers to a directory.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     *
-     * EINVAL - *pathname* is not a regular file.
+     * ESTALE - The inode does not exist.
+     * EISDIR - The inode was a directory.
+     * EINVAL - The inode was not a file suitable for reading.
      */
     read(
         modelId: string,
         snapshotId: string | null,
-        pathname: string | Buffer,
+        inode: number,
         offset: number,
         count: number
     ): Promise<{
         error?:
             | {
-                  code:
-                      | 'model_not_found'
-                      | 'snapshot_not_found'
-                      | 'invalid_executor_type'
-                      | 'access_denied'
-                      | 'ENOENT'
-                      | 'EISDIR'
-                      | 'ENOTDIR'
-                      | 'ELOOP'
-                      | 'EINVAL'
+                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'EISDIR' | 'EINVAL'
               }
             | GenericError
         result?: {
             data: Buffer
         }
     }>
+
     /**
-     * Write to a file.
-     *
-     * If *truncate* is true, the file is truncated to the length of the data before write.
-     * In this case, the data is written to the start of the file and *offset* is ignored.
+     * Write to a file. If successful, it is not guaranteed that all bytes were written. The return value bytesWritten contains the number of
+     * bytes written.
      *
      * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * EISDIR - *pathname* refers to a directory.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     *
-     * EFBIG - An attempt was made to write a file that exceeds the maximum file-size limit.
+     * ESTALE - The inode does not exist.
+     * EISDIR - The inode was a directory.
+     * ENOSPC - Not enough space on the filesystem to perform the write.
+     * EINVAL - The inode was not a file suitable for writing.
      */
     write(
         modelId: string,
-        pathname: string | Buffer,
+        inode: number,
         data: Buffer,
         offset: number,
         truncate?: boolean
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'EISDIR' | 'ENOTDIR' | 'ELOOP' | 'EFBIG'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'EISDIR' | 'ENOSPC' | 'EINVAL'
               }
             | GenericError
         result?: {
             bytesWritten: number
         }
     }>
-    /**
-     * Truncate a file to a specified length.
-     *
-     * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * EISDIR - *pathname* refers to a directory.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     *
-     * EFBIG - An attempt was made to write a file that exceeds the maximum file-size limit.
-     */
-    truncate(
-        modelId: string,
-        pathname: string | Buffer,
-        length: number
-    ): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'EISDIR' | 'ENOTDIR' | 'ELOOP' | 'EFBIG'
-              }
-            | GenericError
-        result?: {}
-    }>
-    /**
-     * Get file status.
-     *
-     * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     */
-    stat(
-        modelId: string,
-        snapshotId: string | null,
-        pathname: string | Buffer
-    ): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ELOOP'
-              }
-            | GenericError
-        result?: {
-            st_ino: number
-            st_mode: number
-            st_nlink: number
-            st_size: number
-            st_blksize: number
-            st_blocks: number
-            st_atime: number
-            st_atime_nsec: number
-            st_mtime: number
-            st_mtime_nsec: number
-            st_ctime: number
-            st_ctime_nsec: number
-        }
-    }>
-    /**
-     * Get file status. If the file is a symbolic link, then it returns information about the link itself.
-     *
-     * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     */
-    lstat(
-        modelId: string,
-        snapshotId: string | null,
-        pathname: string | Buffer
-    ): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ELOOP'
-              }
-            | GenericError
-        result?: {
-            st_ino: number
-            st_mode: number
-            st_nlink: number
-            st_size: number
-            st_blksize: number
-            st_blocks: number
-            st_atime: number
-            st_atime_nsec: number
-            st_mtime: number
-            st_mtime_nsec: number
-            st_ctime: number
-            st_ctime_nsec: number
-        }
-    }>
+
     /**
      * Create a symbolic link.
      *
-     * ENOENT - A directory component in *linkpath* does not exist or is a dangling symbolic link.
-     *
-     * ENOTDIR - A component used as a directory in *linkpath* is not, in fact, a directory.
-     *
-     * EEXIST - *linkpath* already exists.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *linkpath*.
+     * Errors:
+     * ESTALE - The parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory.
+     * EEXIST - The name already exists within the directory.
      */
     symlink(
         modelId: string,
-        target: string | Buffer,
-        linkpath: string | Buffer
+        parent: number,
+        name: string | Buffer,
+        link: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'EEXIST' | 'ELOOP'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
               }
             | GenericError
-        result?: {}
+        result?: {
+            inode: number
+            stat: Stat
+        }
     }>
+
     /**
-     * Read value of a symbolic link.
+     * Read the link value of a symbolic link.
      *
      * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * EINVAL - The named file is not a symbolic link.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * ESTALE - The inode does not exist.
+     * EINVAL - The inode was not a symbolic link.
      */
     readlink(
         modelId: string,
         snapshotId: string | null,
-        pathname: string | Buffer
+        inode: number
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'EINVAL' | 'ELOOP'
+                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'EINVAL'
               }
             | GenericError
         result?: {
-            data: Buffer
+            link: Buffer
         }
     }>
+
     /**
      * Create a directory.
      *
      * Errors:
-     *
-     * ENOENT - A directory component in *pathname* does not exist or is a dangling symbolic link.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * EEXIST - *pathname* already exists.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * ESTALE - The parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory.
+     * EEXIST - The name already exists within the directory.
      */
     mkdir(
         modelId: string,
-        pathname: string | Buffer,
+        parent: number,
+        name: string | Buffer,
         mode: number
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'EEXIST' | 'ELOOP'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
               }
             | GenericError
-        result?: {}
+        result?: {
+            inode: number
+            stat: Stat
+        }
     }>
+
     /**
-     * Delete a name and possibly the file it refers to.
+     * Remove a name for a regular or special file.
      *
-     * ENOENT - The named file does not exist.
-     *
-     * EISDIR - *pathname* refers to a directory.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * Errors:
+     * ESTALE - The parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory.
+     * ENOENT - The name does not exist within the directory.
+     * EISDIR - The file pointed to by name is a directory.
      */
     unlink(
         modelId: string,
-        pathname: string | Buffer
+        parent: number,
+        name: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'EISDIR' | 'ENOTDIR' | 'ELOOP'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'EISDIR'
               }
             | GenericError
         result?: {}
     }>
+
     /**
-     * Delete a directory.
+     * Remove an empty directory.
      *
      * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - *pathname*, or a component used as a directory in *pathname*, is not, in fact, a directory.
-     *
-     * ENOTEMPTY - *pathname* contains entries other that "." and "..".
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * ESTALE - The parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
+     * ENOENT - The name does not exist within the directory.
+     * ENOTEMPTY - The file pointed to by name is not an empty directory.
      */
     rmdir(
         modelId: string,
-        pathname: string | Buffer
+        parent: number,
+        name: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ENOTEMPTY' | 'ELOOP'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'ENOTEMPTY'
               }
             | GenericError
         result?: {}
     }>
+
     /**
-     * Rename a file.
+     * Move a file or directory.
      *
      * Errors:
-     *
-     * ENOENT - *oldpath* does not exist, or a directory component in *newpath* does not exist.
-     *
-     * EISDIR - *newpath* is an existing directory, but *oldpath* is not a directory.
-     *
-     * ENOTDIR - A component used as a directory in *oldpath* or *newpath*, is not, in fact, a directory. Or,
-     * *oldpath* is a directory, and *newpath* exists but is not a directory.
-     *
-     * ENOTEMPTY - *newpath* is a nonempty directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     *
-     * EINVAL - An attempt was made to make a directory a subdirectory of itself.
+     * ESTALE - At least one of the parent inodes does not exist.
+     * ENOTDIR - At least one of the parent inodes is not a directory.
+     * ENOENT - The name does not exist.
+     * ENOTEMPTY or EEXIST - There is a non-empty directory at the target location.
      */
     rename(
         modelId: string,
-        oldpath: string | Buffer,
-        newpath: string | Buffer
+        parent: number,
+        name: string | Buffer,
+        newparent: number,
+        newname: string | Buffer,
+        flags?: number
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'EISDIR' | 'ENOTDIR' | 'ENOTEMPTY' | 'ELOOP' | 'EINVAL'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'ENOTEMPTY' | 'EEXIST' | 'EISDIR' | 'ENOSPC'
               }
             | GenericError
         result?: {}
     }>
+
     /**
-     * Make a new name for a file.
+     * Create a new name for a file.
      *
-     * ENOENT - *oldpath*, or a directory component in *oldpath* or *newpath* does not exist or is a dangling symbolic link.
-     *
-     * ENOTDIR - A component used as a directory in *oldpath* or *newpath* is not, in fact, a directory.
-     *
-     * EEXIST - *newpath* already exists.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *oldpath* or *newpath*.
-     *
-     * EPERM - *oldpath* is a directory.
+     * Errors:
+     * ESTALE - The new parent inode does not exist.
+     * ENOTDIR - The new parent inode is not a directory.
+     * EPERM - The file to link was a directory - not allowed.
+     * EEXIST - The name already exists within the directory.
      */
     link(
         modelId: string,
-        oldpath: string | Buffer,
-        newpath: string | Buffer
+        inode: number,
+        newparent: number,
+        newname: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'EEXIST' | 'ELOOP' | 'EPERM'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EPERM' | 'EEXIST' | 'ENOSPC'
               }
             | GenericError
-        result?: {}
+        result?: {
+            stat: Stat
+        }
     }>
+
     /**
-     * Read a directory.
+     * Get entries within a directory.
      *
      * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - *pathname*, or a component used as a directory in *pathname*, is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * ESTALE - The inode does not exist.
+     * ENOTDIR - The inode is not a directory.
      */
     readdir(
         modelId: string,
         snapshotId: string | null,
-        pathname: string | Buffer
+        inode: number
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ELOOP'
+                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'ENOTDIR' | 'EPERM' | 'EEXIST'
               }
             | GenericError
         result?: {
-            entries: { name: Buffer; fileType: number; ino: number }[]
+            entries: { basename: Buffer; filetype: number; ino: number }[]
         }
     }>
+
     /**
-     * Change permissions of a file.
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     */
-    chmod(
-        modelId: string,
-        pathname: string | Buffer,
-        mode: number
-    ): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ELOOP'
-              }
-            | GenericError
-        result?: {}
-    }>
-    /**
-     * Change file last access and modification times.
+     * Remove a directory and all its content.
      *
      * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - A component used as a directory in *pathname* is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
-     *
-     * EINVAL - Invalid value in one of the nanoseconds fields (value outside range 0 to 999,999,999, and not UTIME_NOW or UTIME_OMIT)
-     */
-    utimes(
-        modelId: string,
-        pathname: string | Buffer,
-        atime: { seconds: number; nanoseconds: number },
-        mtime: { seconds: number; nanoseconds: number }
-    ): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ELOOP' | 'EINVAL'
-              }
-            | GenericError
-        result?: {}
-    }>
-    /**
-     * Remove a directory and all of its contents.
-     *
-     * Errors:
-     *
-     * ENOENT - The named file does not exist.
-     *
-     * ENOTDIR - *pathname*, or a component used as a directory in *pathname*, is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *pathname*.
+     * ESTALE - The parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
+     * ENOENT - The name does not exist within the directory.
+     * ENOTEMPTY - The file pointed to by name is not an empty directory.
      */
     rmdirAll(
         modelId: string,
-        pathname: string | Buffer
+        parent: number,
+        name: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'ENOTDIR' | 'ELOOP'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'ENOTEMPTY'
               }
             | GenericError
         result?: {}
     }>
+
     /**
-     * Creates a new copy of a file or directory in a new location.
+     * Create a copy of a file or directory.
      *
      * Errors:
-     *
-     * ENOENT - *sourcepath* does not exist, or a directory component in *destinationpath* does not exist.
-     *
-     * EEXIST - *destinationpath* already exists.
-     *
-     * ENOTDIR - A component used as a directory in *sourcepath* or *destinationpath*, is not, in fact, a directory.
-     *
-     * ELOOP - Too many symbolic links were encountered in resolving *sourcepath* or *destinationpath*.
+     * ESTALE - The new parent inode does not exist.
+     * ENOTDIR - The parent inode is not a directory.
+     * EEXIST - The name already exists within the directory.
      */
     copy(
         modelId: string,
-        sourcepath: string | Buffer,
-        destinationpath: string | Buffer
+        inode: number,
+        newparent: number,
+        newname: string | Buffer
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ENOENT' | 'EEXIST' | 'ENOTDIR' | 'ELOOP'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
               }
             | GenericError
         result?: {}

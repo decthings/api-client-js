@@ -30,26 +30,22 @@ export class DecthingsClientWebSocketClosedError extends Error {
     }
 }
 
-const defaultWsAddress = 'wss://app.decthings.com/ws_api/v0'
-const defaultHttpAddress = 'https://app.decthings.com/api/v0'
+const defaultHttpAddress = 'https://api.decthings.com/v0'
+const defaultWsAddress = 'wss://api.decthings.com/v0/ws'
 
 export type DecthingsClientOptions = {
     /**
-     * Server address to use for WebSocket API. Defaults to "wss://app.decthings.com/ws_api/v0"
-     */
-    wsServerAddress?: string
-    /**
-     * Server address to use for HTTP API. Defaults to "https://app.decthings.com/api/v0"
+     * Server address to use for HTTP API. Defaults to "https://api.decthings.com/v0"
      */
     httpServerAddress?: string
+    /**
+     * Server address to use for WebSocket API. Defaults to "wss://api.decthings.com/v0/ws"
+     */
+    wsServerAddress?: string
     /**
      * Optional API key. Some methods require this to be set.
      */
     apiKey?: string
-    /**
-     * Whether to force use of HTTP, WebSocket. Default is "mixed", where the best will be chosen depending on the method called.
-     */
-    mode?: 'http' | 'ws' | 'mixed'
 }
 
 export declare interface DecthingsClient extends EventEmitter {
@@ -84,7 +80,6 @@ export class DecthingsClient extends EventEmitter {
 
     private _wsServerAddress: string
     private _httpServerAddress: string
-    private _mode: 'http' | 'ws' | 'mixed'
 
     #_apiKey?: string
     private _closed = false
@@ -221,7 +216,7 @@ export class DecthingsClient extends EventEmitter {
                     waitingResponses.set(id, {
                         resolve: (val) => {
                             resolve(val)
-                            setImmediate(() => {
+                            setTimeout(() => {
                                 if (disposed) {
                                     return
                                 }
@@ -229,7 +224,7 @@ export class DecthingsClient extends EventEmitter {
                                 // and addKeepalive
                                 processingRequests.delete(id)
                                 this._ws.disposeIfUnused()
-                            })
+                            }, 0)
                         },
                         reject
                     })
@@ -267,10 +262,6 @@ export class DecthingsClient extends EventEmitter {
         this._httpServerAddress = options.httpServerAddress || defaultHttpAddress
         if (typeof this._httpServerAddress !== 'string') {
             throw new Error('Invalid option: Expected httpServerAddress to be a string.')
-        }
-        this._mode = options.mode || 'mixed'
-        if (this._mode !== 'http' && this._mode !== 'mixed' && this._mode !== 'ws') {
-            throw new Error('Invalid option: Expected mode to be "http", "ws" or "mixed".')
         }
 
         const addKeepalive = (id: string) => {
@@ -322,24 +313,24 @@ export class DecthingsClient extends EventEmitter {
         method: string,
         params: any[],
         data: Buffer[],
-        forceWebSocket: boolean = false
+        mode: 'http' | 'ws' = 'http'
     ): Promise<{ error?: any; result?: any; data: Buffer[] }> {
         if (this._closed) {
             throw new DecthingsClientClosedError()
         }
-        if (!this._ws && (forceWebSocket || this._mode === 'ws') && this._mode !== 'http') {
+        if (!this._ws && mode === 'ws') {
             this._createSocket()
         }
         let res: {
             response: Protocol.Response
             data: Buffer[]
         }
-        if (this._ws) {
+        if (mode === 'ws') {
             // Send over WebSocket
             res = await this._ws.call(api, method, params, data)
         } else {
             // Send over HTTP
-            const headers: string[][] = [['Content-Type', 'application/octet-stream']]
+            const headers: [string, string][] = [['Content-Type', 'application/octet-stream']]
             if (this.#_apiKey) {
                 headers.push(['Authorization', `Bearer ${this.#_apiKey}`])
             }
@@ -361,16 +352,13 @@ export class DecthingsClient extends EventEmitter {
         return { result: res.response.result, data: res.data }
     }
 
-    /**
-     * Returns true if this client currently uses WebSocket connection instead of HTTP.
-     */
-    public isWebSocket(): boolean {
+    public hasWebSocket(): boolean {
         return Boolean(this._ws)
     }
 
     public setApiKey(apiKey?: string) {
         if (typeof apiKey === 'string') {
-            this.#_apiKey = apiKey
+            this.#_apiKey = apiKey.trim()
         } else if (apiKey === null || apiKey === undefined) {
             this.#_apiKey = undefined
         } else {

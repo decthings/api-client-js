@@ -6,7 +6,6 @@ import {
     CompositeModelDefinition,
     EvaluationResultDetails,
     FailedEvaluationResultDetails,
-    FilesystemSize,
     LauncherConfig
 } from '../types'
 import { Data, DataElement, Parameter, ParameterProvider } from '../DataTypes'
@@ -25,7 +24,7 @@ export interface IModelRpc {
         description: string,
         executor:
             | {
-                  type: 'NodeJS_js' | 'NodeJS_ts' | 'Python'
+                  type: 'nodeJsJs' | 'nodeJsTs' | 'python'
                   empty?: boolean
               }
             | { type: 'composite' }
@@ -85,6 +84,7 @@ export interface IModelRpc {
                                     code: 'session_terminated'
                                     exitCode?: number
                                     signal?: string
+                                    oom: boolean
                                 }
                               | { code: 'exception'; at: 'launchSession' | 'createState'; exceptionDetails?: string }
                           createInitialStateDurations: {
@@ -129,15 +129,16 @@ export interface IModelRpc {
     }>
 
     /**
-     * Set the name of a snapshot.
      * @param modelId The model's id.
      * @param snapshotId The snapshot's id.
-     * @param newSnapshotName The new name of the snapshot.
+     * @param Properties and values to change. Empty fields will not be changed.
      */
-    setSnapshotName(
+    updateSnapshot(
         modelId: string,
         snapshotId: string,
-        newSnapshotName: string
+        properties: {
+            name?: string
+        }
     ): Promise<{
         error?: { code: 'model_not_found' | 'snapshot_not_found' | 'access_denied' } | GenericError
         result?: {}
@@ -207,11 +208,11 @@ export interface IModelRpc {
      * Change the size of the filesystem used. Increasing the amount will increase the monthly
      * cost but allow you to store more files within the filesystem.
      * @param modelId The model's id.
-     * @param newFilesystemSize The new size to use.
+     * @param newFilesystemSizeMebibytes The new size to use.
      */
     setFilesystemSize(
         modelId: string,
-        newFilesystemSize: FilesystemSize
+        newFilesystemSizeMebibytes: number
     ): Promise<{
         error?:
             | { code: 'model_not_found' | 'invalid_executor_type' | 'not_enough_space' | 'access_denied' | 'quota_exceeded' | 'server_overloaded' }
@@ -245,27 +246,36 @@ export interface IModelRpc {
             | { code: 'dataset_not_found'; datasetId: string }
             | GenericError
         result?: {
-            durations: {
-                total: number
-                createLauncher?: number
-                createSession?: number
-                createState?: number
+            failed?: {
+                durations: {
+                    total: number
+                    createLauncher?: number
+                    createSession?: number
+                    createState?: number
+                }
+                error:
+                    | {
+                          code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
+                      }
+                    | {
+                          code: 'session_terminated'
+                          exitCode?: number
+                          signal?: string
+                          oom: boolean
+                      }
+                    | {
+                          code: 'max_duration_exceeded'
+                          at: 'launchSession' | 'createState'
+                      }
+                    | { code: 'exception'; at: 'launchSession' | 'createState'; exceptionDetails?: string }
             }
-            failed?:
-                | {
-                      code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
-                  }
-                | {
-                      code: 'session_terminated'
-                      exitCode?: number
-                      signal?: string
-                  }
-                | {
-                      code: 'max_duration_exceeded'
-                      at: 'launchSession' | 'createState'
-                  }
-                | { code: 'exception'; at: 'launchSession' | 'createState'; exceptionDetails?: string }
             success?: {
+                durations: {
+                    total: number
+                    createLauncher?: number
+                    createSession?: number
+                    createState: number
+                }
                 stateId: string
             }
         }
@@ -313,7 +323,7 @@ export interface IModelRpc {
     getCreatingStates(modelId: string): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' } | GenericError
         result?: {
-            states: { id: string; startedAt: number }[]
+            states: { id: string; name: string; startedAt: number }[]
         }
     }>
 
@@ -328,34 +338,37 @@ export interface IModelRpc {
     ): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'state_not_found' | 'state_already_created' } | GenericError
         result?: {
-            createStateFailed?: {
+            failed?: {
+                durations: {
+                    total: number
+                    createLauncher?: number
+                    createSession?: number
+                    createState?: number
+                }
                 error:
-                    | { code: 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown' }
                     | {
-                          code: 'max_duration_exceeded'
-                          at: 'launchSession' | 'createState'
-                      }
-                    | {
-                          code: 'launcher_terminated'
+                          code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
                       }
                     | {
                           code: 'session_terminated'
                           exitCode?: number
                           signal?: string
+                          oom: boolean
+                      }
+                    | {
+                          code: 'max_duration_exceeded'
+                          at: 'launchSession' | 'createState'
                       }
                     | { code: 'exception'; at: 'launchSession' | 'createState'; exceptionDetails?: string }
-                durations: {
-                    createLauncher?: number
-                    createSession?: number
-                    createState?: number
-                }
             }
-            createStateSuccess?: {
+            success?: {
                 durations: {
+                    total: number
                     createLauncher?: number
                     createSession?: number
                     createState: number
                 }
+                stateId: string
             }
         }
     }>
@@ -504,7 +517,7 @@ export interface IModelRpc {
             metrics: { name: string; amount: number }[]
             launcher:
                 | {
-                      type: 'persistent'
+                      type: 'persistentLauncher'
                       persistentLauncherId: string
                   }
                 | {
@@ -568,6 +581,7 @@ export interface IModelRpc {
                                 code: 'session_terminated'
                                 exitCode?: number
                                 signal?: string
+                                oom: boolean
                             }
                           | {
                                 code: 'max_duration_exceeded'
@@ -646,12 +660,13 @@ export interface IModelRpc {
             | { code: 'dataset_not_found'; datasetId: string }
             | GenericError
         result?: {
-            totalDuration: number
             failed?: {
+                totalDuration: number
                 cancelled: boolean
                 executionDetails: FailedEvaluationResultDetails
             }
             success?: {
+                totalDuration: number
                 executionDetails: EvaluationResultDetails
                 output: Parameter[]
             }
@@ -683,12 +698,13 @@ export interface IModelRpc {
     ): Promise<{
         error?: { code: 'model_not_found' | 'evaluation_not_found' } | GenericError
         result?: {
-            totalDuration: number
             evaluationFailed?: {
+                totalDuration: number
                 cancelled: boolean
                 executionDetails: FailedEvaluationResultDetails
             }
             evaluationSuccess?: {
+                totalDuration: number
                 output: Parameter[]
                 executionDetails: EvaluationResultDetails
             }

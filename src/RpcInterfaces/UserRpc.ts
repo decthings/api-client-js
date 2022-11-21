@@ -1,4 +1,4 @@
-import { FilesystemSize, LauncherSpec } from '../types'
+import { LauncherSpec } from '../types'
 import { GenericError } from './Error'
 
 export interface IUserRpc {
@@ -109,63 +109,81 @@ export interface IUserRpc {
             perDay: {
                 day: number
                 models: {
-                    filesystems: {
-                        [size in FilesystemSize]?: {
-                            durationSeconds: number
-                            cost: number
-                        }
-                    }
                     statesMebibyteMinutes: number
                     statesCost: number
+                    filesystemsMebibyteMinutes: number
+                    filesystemsCost: number
                     evaluations: {
                         amount: number
                         baseCost: number
+                        inputData: {
+                            bytes: number
+                            cost: number
+                        }
                         outputData: {
                             bytes: number
                             cost: number
                         }
-                        dataReads: {
-                            amount: number
-                            cost: number
-                        }
                         launchers: {
-                            [spec in LauncherSpec]?: {
-                                warmupDurationSeconds: number
-                                afterWarmupDurationSeconds: number
-                                warmupCost: number
-                                afterWarmupCost: number
+                            duringWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                            afterWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
                             }
                         }
                     }
                     createStates: {
                         amount: number
                         baseCost: number
-                        dataReads: {
-                            amount: number
-                            cost: number
-                        }
                         launchers: {
-                            [spec in LauncherSpec]?: {
-                                warmupDurationSeconds: number
-                                afterWarmupDurationSeconds: number
-                                warmupCost: number
-                                afterWarmupCost: number
+                            duringWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                            afterWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
                             }
                         }
                     }
                     trainingSessions: {
                         amount: number
                         baseCost: number
-                        dataReads: {
-                            amount: number
-                            cost: number
-                        }
                         launchers: {
-                            [spec in LauncherSpec]?: {
-                                warmupDurationSeconds: number
-                                afterWarmupDurationSeconds: number
-                                warmupCost: number
-                                afterWarmupCost: number
+                            duringWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                            afterWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
                             }
                         }
                     }
@@ -173,11 +191,21 @@ export interface IUserRpc {
                         amount: number
                         baseCost: number
                         launchers: {
-                            [spec in LauncherSpec]?: {
-                                warmupDurationSeconds: number
-                                afterWarmupDurationSeconds: number
-                                warmupCost: number
-                                afterWarmupCost: number
+                            duringWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                            afterWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
                             }
                         }
                     }
@@ -185,27 +213,55 @@ export interface IUserRpc {
                         amount: number
                         baseCost: number
                         launchers: {
-                            [spec in LauncherSpec]?: {
-                                warmupDurationSeconds: number
-                                afterWarmupDurationSeconds: number
-                                warmupCost: number
-                                afterWarmupCost: number
+                            duringWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                            afterWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
                             }
                         }
                     }
                     debugSessions: {
                         amount: number
                         baseCost: number
-                        dataReads: {
-                            amount: number
-                            cost: number
-                        }
                         launchers: {
-                            [spec in LauncherSpec]?: {
-                                warmupDurationSeconds: number
-                                afterWarmupDurationSeconds: number
-                                warmupCost: number
-                                afterWarmupCost: number
+                            duringWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                            afterWarmup: {
+                                cpuCoreMinutes: number
+                                cpuCost: number
+                                memoryMebibyteMinutes: number
+                                memoryCost: number
+                                diskMebibyteMinutes: number
+                                diskCost: number
+                            }
+                        }
+                        operations: {
+                            amount: number
+                            baseCost: number
+                            evaluateInputData: {
+                                bytes: number
+                                cost: number
+                            }
+                            evaluateOutputData: {
+                                bytes: number
+                                cost: number
                             }
                         }
                     }
@@ -213,15 +269,23 @@ export interface IUserRpc {
                 datasets: {
                     dataMebibyteMinutes: number
                     dataCost: number
-                    addedEntries: number
-                    addedEntriesCost: number
                 }
                 persistentLaunchers: {
-                    [spec in LauncherSpec]?: {
-                        warmupDurationSeconds: number
-                        afterWarmupDurationSeconds: number
-                        warmupCost: number
-                        afterWarmupCost: number
+                    duringWarmup: {
+                        cpuCoreMinutes: number
+                        cpuCost: number
+                        memoryMebibyteMinutes: number
+                        memoryCost: number
+                        diskMebibyteMinutes: number
+                        diskCost: number
+                    }
+                    afterWarmup: {
+                        cpuCoreMinutes: number
+                        cpuCost: number
+                        memoryMebibyteMinutes: number
+                        memoryCost: number
+                        diskMebibyteMinutes: number
+                        diskCost: number
                     }
                 }
             }[]

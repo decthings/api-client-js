@@ -1,7 +1,5 @@
 import { ParameterDef, DataRules } from './DataTypes'
 
-export type FilesystemSize = '2gb' | '4gb' | '8gb' | '16gb' | '32gb' | '64gb' | '128gb'
-
 export type StatefulParameterDefinitions = {
     createState: ParameterDef[]
     train: ParameterDef[]
@@ -25,19 +23,14 @@ export type CompositeModelDefinition = {
                       type: 'node'
                       nodeIndex: number
                       fromOutputName: string
-                      shuffle: boolean
-                      maxReads: number
                   }
                 | {
                       type: 'constant'
                       index: number
-                      maxReads: number
                   }
                 | {
                       type: 'input'
                       index: number
-                      shuffle: boolean
-                      maxReads: number
                   }
         }[]
         layout: {
@@ -67,7 +60,6 @@ export type CompositeModelDefinition = {
                   type: 'data'
                   id: string
               }
-        shuffle: boolean
         layout: {
             posX: number
             posY: number
@@ -95,20 +87,11 @@ export type CompositeModelDefinition = {
     }[]
 }
 
-export type LauncherSpec =
-    | 'c-0.125cpu-128M'
-    | 'c-0.25cpu-256M'
-    | 'c-0.25cpu-512M'
-    | 'c-0.25cpu-1G'
-    | 'c-0.5cpu-512M'
-    | 'c-0.5cpu-1G'
-    | 'c-0.5cpu-2G'
-    | 'c-1cpu-1G'
-    | 'c-1cpu-2G'
-    | 'c-1cpu-4G'
-    | 'c-2cpu-2G'
-    | 'c-2cpu-4G'
-    | 'c-2cpu-8G'
+export type LauncherSpec = {
+    cpus: 0.125 | 0.25 | 0.5 | 1 | 2
+    memoryMebibytes: number
+    diskMebibytes: number
+}
 
 export type LauncherConfig = {
     nodeVersion?: string
@@ -135,14 +118,14 @@ export type CompositeExecutor = {
 
 export type CodeExecutor = {
     type: 'code'
-    language: 'NodeJS' | 'Python'
+    language: 'nodeJs' | 'python'
     parameterDefinitions: StatefulParameterDefinitions
     defaultLauncherSpecs: {
         createState: LauncherSpec
         evaluate: LauncherSpec
     }
     maxDurationsSeconds: { launchSession: number; instantiateModel: number; createState: number; train: number; evaluate: number }
-    filesystemSize: FilesystemSize
+    filesystemSizeMebibytes: number
     launcherConfig: LauncherConfig
 
     ongoingTrainingSessions: string[]
@@ -154,7 +137,7 @@ export type CodeExecutor = {
         id: string
         name: string
         createdAt: number
-        filesystemSize: FilesystemSize
+        filesystemSizeMebibytes: number
         launcherConfig: LauncherConfig
         parameterDefinitions: StatefulParameterDefinitions
         defaultLauncherSpecs: {
@@ -215,7 +198,7 @@ export type FailedEvaluationResultDetails =
           }
           executedOnLauncher?:
               | {
-                    type: 'persistent'
+                    type: 'persistentLauncher'
                     persistentLauncherId: string
                 }
               | {
@@ -226,13 +209,13 @@ export type FailedEvaluationResultDetails =
               | {
                     code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
                 }
-              | { code: 'session_terminated'; exitCode?: number; signal?: string }
+              | { code: 'session_terminated'; exitCode?: number; signal?: string; oom: boolean }
               | { code: 'exception'; at: 'launchSession' | 'instantiateModel' | 'evaluate'; exceptionDetails?: string }
               | {
                     code: 'max_duration_exceeded'
                     at: 'launchSession' | 'instantiateModel' | 'evaluate'
                 }
-              | { code: 'invalid_output'; type: 'invalid' | 'not_applicable_to_parameterDefinitions'; reason: string }
+              | { code: 'invalid_output'; type: 'invalid' | 'not_applicable_to_parameter_definitions'; reason: string }
       }
     | {
           modelType: 'composite'
@@ -245,7 +228,6 @@ export type FailedEvaluationResultDetails =
           inputs: CompositeModelDefinition['inputs']
           constants: {
               value: null
-              shuffle: boolean
               layout: {
                   posX: number
                   posY: number
@@ -264,7 +246,7 @@ export type EvaluationResultDetails =
           }
           executedOnLauncher:
               | {
-                    type: 'persistent'
+                    type: 'persistentLauncher'
                     persistentLauncherId: string
                 }
               | {
@@ -279,7 +261,6 @@ export type EvaluationResultDetails =
           inputs: CompositeModelDefinition['inputs']
           constants: {
               value: null
-              shuffle: boolean
               layout: {
                   posX: number
                   posY: number

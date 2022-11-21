@@ -109,7 +109,10 @@ export interface IDatasetRpc {
         }[],
         datasetVersionId?: string
     ): Promise<{
-        error?: { code: 'dataset_not_found' | 'access_denied' | 'quota_exceeded' } | { code: 'incorrect_version_id'; datasetVersionId: string } | GenericError
+        error?:
+            | { code: 'dataset_not_found' | 'index_out_of_range' | 'access_denied' | 'quota_exceeded' }
+            | { code: 'incorrect_version_id'; datasetVersionId: string }
+            | GenericError
         result?: {
             newDatasetVersionId: string
         }
@@ -168,7 +171,10 @@ export interface IDatasetRpc {
         entries: number[],
         datasetVersionId?: string
     ): Promise<{
-        error?: { code: 'dataset_not_found' | 'access_denied' } | { code: 'incorrect_version_id'; datasetVersionId: string } | GenericError
+        error?:
+            | { code: 'dataset_not_found' | 'index_out_of_range' | 'access_denied' }
+            | { code: 'incorrect_version_id'; datasetVersionId: string }
+            | GenericError
         result?: {
             newDatasetVersionId: string
         }
@@ -185,7 +191,10 @@ export interface IDatasetRpc {
         entries: number[],
         datasetVersionId?: string
     ): Promise<{
-        error?: { code: 'dataset_not_found' | 'access_denied' } | { code: 'incorrect_version_id'; datasetVersionId: string } | GenericError
+        error?:
+            | { code: 'dataset_not_found' | 'index_out_of_range' | 'access_denied' }
+            | { code: 'incorrect_version_id'; datasetVersionId: string }
+            | GenericError
         result?: {
             newDatasetVersionId: string
         }

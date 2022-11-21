@@ -12,9 +12,9 @@ export interface ILanguageRpc extends EventEmitter {
     /**
      * Event emitted when a language server exits.
      */
-    on(event: 'exit', handler: (languageServerId: string, reason: 'timedout' | 'unknown') => void): this
-    emit(event: 'exit', languageServerId: string, reason: 'timedout' | 'unknown'): boolean
-    removeListener(event: 'exit', handler: (languageServerId: string, reason: 'timedout' | 'unknown') => void): this
+    on(event: 'exit', handler: (languageServerId: string, reason: 'timedout' | 'oom' | 'unknown') => void): this
+    emit(event: 'exit', languageServerId: string, reason: 'timedout' | 'oom' | 'unknown'): boolean
+    removeListener(event: 'exit', handler: (languageServerId: string, reason: 'timedout' | 'oom' | 'unknown') => void): this
 
     /**
      * Start a new language server with access to the model filesystem.
@@ -25,7 +25,7 @@ export interface ILanguageRpc extends EventEmitter {
      */
     startLanguageServer(
         modelId: string | null,
-        language: 'Python'
+        language: 'python'
     ): Promise<{
         error?:
             | {

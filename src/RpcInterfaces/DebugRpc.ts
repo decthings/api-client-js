@@ -11,6 +11,7 @@ export type DebugSessionTerminatedReason =
           code: 'session_terminated'
           exitCode?: number
           signal?: string
+          oom: boolean
       }
     | {
           code: 'exception'

@@ -106,7 +106,9 @@ export function deserializeForWs(data: Buffer): { response?: [number, Response];
         data = data.slice(5)
     } else {
         // Event message
-        data = data.slice(1)
+        const api_len = data.readUint8(1)
+        var api = data.subarray(2, 2 + api_len).toString()
+        data = data.slice(2 + api_len)
     }
 
     const [length, vLength] = Varint.deserializeVarUint64(data)
@@ -128,6 +130,6 @@ export function deserializeForWs(data: Buffer): { response?: [number, Response];
         return { response: [id, json], data: dataSegments }
     } else {
         // Event message
-        return { event: json, data: dataSegments }
+        return { event: { api, ...json }, data: dataSegments }
     }
 }

@@ -11,6 +11,7 @@ export type TerminalSessionTerminatedReason =
           details: {
               exitCode?: number
               signal?: string
+              oom: boolean
           }
       }
 

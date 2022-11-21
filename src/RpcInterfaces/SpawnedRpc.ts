@@ -11,6 +11,7 @@ export type SpawnedCommandTerminatedReason =
           details: {
               exitCode?: number
               signal?: string
+              oom: boolean
           }
       }
 
