@@ -1,8 +1,8 @@
-<img src="https://decthings.com/logo.png" alt="decthings logo" style="zoom: 33%;" />
+<img src="https://decthings.com/logo.png" alt="decthings logo" width="33%" />
 
 ## Decthings API-client
 
-**Early access:** We continue development and would really appreciate any feedback, notes or concerns you might have. In the meantime, note that Decthings is not suitable for production use.
+**Beta:** Decthings platform is in beta! We continue development and would really appreciate any feedback you might have. In the meantime, note that Decthings is not suitable for production use.
 
 ---
 
@@ -21,7 +21,9 @@ Documentation for this package is available [here](https://decthings.com/docs/ap
 
 ---
 
-#### Evaluation example in Node.js
+With Decthings, you can create models that run in the cloud. Then, use an API client to send input data and receive the output.
+
+#### Example
 
 ```typescript
 import * as fs from 'fs';
