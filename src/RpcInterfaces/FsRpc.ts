@@ -101,6 +101,7 @@ export interface IFsRpc {
      * ESTALE - The parent inode does not exist.
      * ENOTDIR - The parent inode is not a directory.
      * EEXIST - The name already exists within the directory.
+     * ENOSPC - There is not enough space within the filesystem.
      */
     mknod(
         modelId: string,
@@ -179,6 +180,7 @@ export interface IFsRpc {
      * ESTALE - The parent inode does not exist.
      * ENOTDIR - The parent inode is not a directory.
      * EEXIST - The name already exists within the directory.
+     * ENOSPC - There is not enough space within the filesystem.
      */
     symlink(
         modelId: string,
@@ -226,6 +228,7 @@ export interface IFsRpc {
      * ESTALE - The parent inode does not exist.
      * ENOTDIR - The parent inode is not a directory.
      * EEXIST - The name already exists within the directory.
+     * ENOSPC - There is not enough space within the filesystem.
      */
     mkdir(
         modelId: string,
@@ -296,6 +299,8 @@ export interface IFsRpc {
      * ENOTDIR - At least one of the parent inodes is not a directory.
      * ENOENT - The name does not exist.
      * ENOTEMPTY or EEXIST - There is a non-empty directory at the target location.
+     * EISDIR - The target is a directory but the file to rename is not a directory.
+     * ENOSPC - There is not enough space within the filesystem.
      */
     rename(
         modelId: string,
@@ -307,7 +312,17 @@ export interface IFsRpc {
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'ENOTEMPTY' | 'EEXIST' | 'EISDIR' | 'ENOSPC'
+                  code:
+                      | 'model_not_found'
+                      | 'invalid_executor_type'
+                      | 'access_denied'
+                      | 'ESTALE'
+                      | 'ENOTDIR'
+                      | 'ENOENT'
+                      | 'ENOTEMPTY'
+                      | 'EEXIST'
+                      | 'EISDIR'
+                      | 'ENOSPC'
               }
             | GenericError
         result?: {}
@@ -321,6 +336,7 @@ export interface IFsRpc {
      * ENOTDIR - The new parent inode is not a directory.
      * EPERM - The file to link was a directory - not allowed.
      * EEXIST - The name already exists within the directory.
+     * ENOSPC - There is not enough space within the filesystem.
      */
     link(
         modelId: string,
@@ -352,7 +368,7 @@ export interface IFsRpc {
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'ENOTDIR' | 'EPERM' | 'EEXIST'
+                  code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'ENOTDIR'
               }
             | GenericError
         result?: {
@@ -367,7 +383,6 @@ export interface IFsRpc {
      * ESTALE - The parent inode does not exist.
      * ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
      * ENOENT - The name does not exist within the directory.
-     * ENOTEMPTY - The file pointed to by name is not an empty directory.
      */
     rmdirAll(
         modelId: string,
@@ -376,7 +391,7 @@ export interface IFsRpc {
     ): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'ENOTEMPTY'
+                  code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT'
               }
             | GenericError
         result?: {}
@@ -389,6 +404,7 @@ export interface IFsRpc {
      * ESTALE - The new parent inode does not exist.
      * ENOTDIR - The parent inode is not a directory.
      * EEXIST - The name already exists within the directory.
+     * ENOSPC - There is not enough space within the filesystem.
      */
     copy(
         modelId: string,

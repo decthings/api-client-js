@@ -796,6 +796,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
                 }
             }
         },
+        getTrainingSysinfo: passthroughCall(client, 'Model', 'getTrainingSysinfo'),
         cancelTrainingSession: passthroughCall(client, 'Model', 'cancelTrainingSession'),
         clearPreviousTrainingSession: passthroughCall(client, 'Model', 'clearPreviousTrainingSession'),
         evaluate: async (...args: Parameters<IModelRpc['evaluate']>) => {
@@ -860,6 +861,7 @@ export function makePersistentLauncherRpc(client: DecthingsClient): IPersistentL
     return {
         createPersistentLauncher: passthroughCall(client, 'PersistentLauncher', 'createPersistentLauncher'),
         getPersistentLaunchers: passthroughCall(client, 'PersistentLauncher', 'getPersistentLaunchers'),
+        getSysinfo: passthroughCall(client, 'PersistentLauncher', 'getSysinfo'),
         deletePersistentLauncher: passthroughCall(client, 'PersistentLauncher', 'deletePersistentLauncher')
     }
 }

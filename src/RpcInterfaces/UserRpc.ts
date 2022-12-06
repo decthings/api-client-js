@@ -1,4 +1,3 @@
-import { LauncherSpec } from '../types'
 import { GenericError } from './Error'
 
 export interface IUserRpc {
@@ -59,7 +58,8 @@ export interface IUserRpc {
                           type: 'trainingFinished'
                           modelId: string
                           trainingSessionId: string
-                          state: 'max_duration_exceeded' | 'failed' | 'completed'
+                          newStateName: string
+                          state: 'failed' | 'completed'
                       }
                     | {
                           type: 'alert'

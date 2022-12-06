@@ -69,7 +69,7 @@ export interface IModelRpc {
         result?: {
             createModelFailed?: {
                 error:
-                    | { code: 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown' }
+                    | { code: 'cancelled' | 'server_overloaded' | 'unknown' }
                     | {
                           code: 'create_state_error'
                           details:
@@ -129,6 +129,7 @@ export interface IModelRpc {
     }>
 
     /**
+     * Update information about a snapshot.
      * @param modelId The model's id.
      * @param snapshotId The snapshot's id.
      * @param Properties and values to change. Empty fields will not be changed.
@@ -231,7 +232,7 @@ export interface IModelRpc {
         modelId: string,
         name: string,
         params: ParameterProvider[],
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec }
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }
     ): Promise<{
         error?:
             | {
@@ -255,7 +256,7 @@ export interface IModelRpc {
                 }
                 error:
                     | {
-                          code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
+                          code: 'launcher_terminated' | 'cancelled' | 'server_overloaded' | 'unknown'
                       }
                     | {
                           code: 'session_terminated'
@@ -347,7 +348,7 @@ export interface IModelRpc {
                 }
                 error:
                     | {
-                          code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
+                          code: 'launcher_terminated' | 'cancelled' | 'server_overloaded' | 'unknown'
                       }
                     | {
                           code: 'session_terminated'
@@ -480,7 +481,7 @@ export interface IModelRpc {
         modelId: string,
         newStateName: string,
         params: ParameterProvider[],
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec }
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }
     ): Promise<{
         error?:
             | {
@@ -515,13 +516,14 @@ export interface IModelRpc {
             newStateName: string
             createdAt: number
             metrics: { name: string; amount: number }[]
-            launcher:
+            executionLocation:
                 | {
                       type: 'persistentLauncher'
                       persistentLauncherId: string
+                      spec: LauncherSpec
                   }
                 | {
-                      type: 'createNew'
+                      type: 'temporaryLauncher'
                       spec: LauncherSpec
                   }
             status:
@@ -570,7 +572,7 @@ export interface IModelRpc {
                       finishedAt: number
                       failReason:
                           | {
-                                code: 'cancelled' | 'launcher_terminated' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
+                                code: 'cancelled' | 'launcher_terminated' | 'server_overloaded' | 'unknown'
                             }
                           | {
                                 code: 'exception'
@@ -609,6 +611,23 @@ export interface IModelRpc {
                 startIndex: number
                 entries: { timestamp: number; data: Data | DataElement }[]
             }[]
+        }
+    }>
+
+    /**
+     * Retrieve system information for a training session, such as CPU, memory and disk usage.
+     * @param modelId The model's id.
+     * @param trainingSessionId The training session's id as returned by train.
+     * @param fromTimestamp If specified, only data points after this time is included.
+     */
+    getTrainingSysinfo(
+        modelId: string,
+        trainingSessionId: string,
+        fromTimestamp?: number
+    ): Promise<{
+        error?: { code: 'model_not_found' | 'training_session_not_found' } | GenericError
+        result?: {
+            sysinfo: { timestamp: number; cpus: number; memory: number; disk?: number }[]
         }
     }>
 

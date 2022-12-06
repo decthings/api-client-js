@@ -46,7 +46,7 @@ export interface ISpawnedRpc extends EventEmitter {
      * @param subscribeToEvents If true and connection is WebSocket, immediately subscribes you to events "stdout", "stderr" and "exit" for the spawned command. Default: true.
      */
     spawnCommand(
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec },
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec },
         command: string,
         args: string[],
         options?: {
@@ -78,7 +78,7 @@ export interface ISpawnedRpc extends EventEmitter {
      */
     spawnCommandForModel(
         modelId: string,
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec },
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec },
         command: string,
         args: string[],
         options?: {
@@ -114,7 +114,21 @@ export interface ISpawnedRpc extends EventEmitter {
     getSpawnedCommands(spawnedCommandIds?: string[]): Promise<{
         error?: GenericError
         result?: {
-            spawnedCommands: { id: string; startedAt: number; modelId?: string }[]
+            spawnedCommands: {
+                id: string
+                startedAt: number
+                modelId?: string
+                executionLocation:
+                    | {
+                          type: 'persistentLauncher'
+                          persistentLauncherId: string
+                          spec: LauncherSpec
+                      }
+                    | {
+                          type: 'temporaryLauncher'
+                          spec: LauncherSpec
+                      }
+            }[]
         }
     }>
 

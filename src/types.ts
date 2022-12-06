@@ -200,14 +200,15 @@ export type FailedEvaluationResultDetails =
               | {
                     type: 'persistentLauncher'
                     persistentLauncherId: string
+                    spec: LauncherSpec
                 }
               | {
-                    type: 'createdNew'
-                    launcherSpec: LauncherSpec
+                    type: 'temporaryLauncher'
+                    spec: LauncherSpec
                 }
           error:
               | {
-                    code: 'launcher_terminated' | 'cancelled' | 'read_limit_exceeded' | 'server_overloaded' | 'unknown'
+                    code: 'launcher_terminated' | 'cancelled' | 'server_overloaded' | 'unknown'
                 }
               | { code: 'session_terminated'; exitCode?: number; signal?: string; oom: boolean }
               | { code: 'exception'; at: 'launchSession' | 'instantiateModel' | 'evaluate'; exceptionDetails?: string }
@@ -248,10 +249,11 @@ export type EvaluationResultDetails =
               | {
                     type: 'persistentLauncher'
                     persistentLauncherId: string
+                    spec: LauncherSpec
                 }
               | {
-                    type: 'createdNew'
-                    launcherSpec: LauncherSpec
+                    type: 'temporaryLauncher'
+                    spec: LauncherSpec
                 }
       }
     | {

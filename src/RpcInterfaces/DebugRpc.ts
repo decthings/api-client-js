@@ -65,7 +65,7 @@ export interface IDebugRpc extends EventEmitter {
      */
     launchDebugSession(
         modelId: string,
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec },
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec },
         options?: { terminateAfterInactiveSeconds?: number; remoteInspector?: boolean },
         subscribeToEvents?: boolean
     ): Promise<{
@@ -92,6 +92,16 @@ export interface IDebugRpc extends EventEmitter {
                 modelId: string
                 parameterDefinitions: StatefulParameterDefinitions
                 trainingSessions: { id: string; createdAt: number; state: 'starting' | 'running' | 'completed' | 'failed' }[]
+                executionLocation:
+                    | {
+                          type: 'persistentLauncher'
+                          persistentLauncherId: string
+                          spec: LauncherSpec
+                      }
+                    | {
+                          type: 'temporaryLauncher'
+                          spec: LauncherSpec
+                      }
             }[]
         }
     }>
@@ -116,7 +126,7 @@ export interface IDebugRpc extends EventEmitter {
     ): Promise<{
         error?:
             | {
-                  code: 'debug_session_not_found' | 'debug_session_terminated' | 'read_limit_exceeded'
+                  code: 'debug_session_not_found' | 'debug_session_terminated'
               }
             | { code: 'dataset_not_found'; datasetId: string }
             | { code: 'exception'; exceptionDetails?: string }
@@ -141,7 +151,7 @@ export interface IDebugRpc extends EventEmitter {
         stateData: { type: 'data'; data: Buffer[] } | { type: 'dataId'; dataId: string }
     ): Promise<{
         error?:
-            | { code: 'debug_session_not_found' | 'debug_session_terminated' | 'state_data_not_found' | 'read_limit_exceeded' }
+            | { code: 'debug_session_not_found' | 'debug_session_terminated' | 'state_data_not_found' }
             | { code: 'exception'; exceptionDetails?: string }
             | GenericError
         result?: {
@@ -203,7 +213,7 @@ export interface IDebugRpc extends EventEmitter {
                       trainDuration?: number
                       failReason:
                           | {
-                                code: 'unknown' | 'cancelled' | 'max_duration_exceeded' | 'read_limit_exceeded'
+                                code: 'unknown' | 'cancelled' | 'max_duration_exceeded'
                             }
                           | {
                                 code: 'exception'
@@ -264,7 +274,7 @@ export interface IDebugRpc extends EventEmitter {
     ): Promise<{
         error?:
             | {
-                  code: 'debug_session_not_found' | 'instantiated_model_not_found' | 'debug_session_terminated' | 'read_limit_exceeded'
+                  code: 'debug_session_not_found' | 'instantiated_model_not_found' | 'debug_session_terminated'
               }
             | { code: 'dataset_not_found'; datasetId: string }
             | { code: 'exception'; exceptionDetails?: string }

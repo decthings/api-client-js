@@ -18,7 +18,7 @@ export interface IPersistentLauncherRpc {
     }>
 
     /**
-     * Retrieve information about persistent launchers. If the requested launcher wasn't returned, it means that the 
+     * Retrieve information about persistent launchers. If the requested launcher wasn't returned, it means that the
      * launcher doesn't exist (or you don't have access to it).
      * @param persistentLauncherIds Which launchers to fetch. If unspecified, all launchers will be fetched.
      */
@@ -37,7 +37,22 @@ export interface IPersistentLauncherRpc {
     }>
 
     /**
-     * Delete a persistent launcher. The persistent launcher will be kept alive until it has nothing running on it. In this 
+     * Retrieve system information for a persistent launcher, such as CPU, memory and disk usage.
+     * @param persistentLauncherId The persistent launcher's id.
+     * @param fromTimestamp If specified, only data points after this time is included.
+     */
+    getSysinfo(
+        persistentLauncherId: string,
+        fromTimestamp?: number
+    ): Promise<{
+        error?: { code: 'persistent_launcher_not_found' } | GenericError
+        result?: {
+            sysinfo: { timestamp: number; cpus: number; memory: number; disk?: number }[]
+        }
+    }>
+
+    /**
+     * Delete a persistent launcher. The persistent launcher will be kept alive until it has nothing running on it. In this
      * case, the launcher state will be set to "{ type: 'deleting' }".
      * @param persistentLauncherId The persistent launcher's id.
      */

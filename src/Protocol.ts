@@ -73,14 +73,14 @@ export function deserializeForHttp(data: Buffer): { response: Response; data: Bu
     const [length, vLength] = Varint.deserializeVarUint64(data)
     const lengthNum = Number(length)
 
-    const response = JSON.parse(data.slice(vLength, vLength + lengthNum).toString())
+    const response = JSON.parse(data.subarray(vLength, vLength + lengthNum).toString())
 
     const dataSegments: Buffer[] = []
     let pos = vLength + lengthNum
     while (pos < data.byteLength) {
-        const [segmentLength, segmentVLength] = Varint.deserializeVarUint64(data.slice(pos))
+        const [segmentLength, segmentVLength] = Varint.deserializeVarUint64(data.subarray(pos))
         const segmentLengthNum = Number(segmentLength)
-        dataSegments.push(data.slice(pos + segmentVLength, pos + segmentVLength + segmentLengthNum))
+        dataSegments.push(data.subarray(pos + segmentVLength, pos + segmentVLength + segmentLengthNum))
         pos += segmentVLength + segmentLengthNum
     }
 
@@ -103,25 +103,25 @@ export function deserializeForWs(data: Buffer): { response?: [number, Response];
     if (first === 0) {
         // Response message
         var id = data.readUint32BE(1)
-        data = data.slice(5)
+        data = data.subarray(5)
     } else {
         // Event message
         const api_len = data.readUint8(1)
         var api = data.subarray(2, 2 + api_len).toString()
-        data = data.slice(2 + api_len)
+        data = data.subarray(2 + api_len)
     }
 
     const [length, vLength] = Varint.deserializeVarUint64(data)
     const lengthNum = Number(length)
 
-    const json = JSON.parse(data.slice(vLength, vLength + lengthNum).toString())
+    const json = JSON.parse(data.subarray(vLength, vLength + lengthNum).toString())
 
     const dataSegments: Buffer[] = []
     let pos = vLength + lengthNum
     while (pos < data.byteLength) {
-        const [segmentLength, segmentVLength] = Varint.deserializeVarUint64(data.slice(pos))
+        const [segmentLength, segmentVLength] = Varint.deserializeVarUint64(data.subarray(pos))
         const segmentLengthNum = Number(segmentLength)
-        dataSegments.push(data.slice(pos + segmentVLength, pos + segmentVLength + segmentLengthNum))
+        dataSegments.push(data.subarray(pos + segmentVLength, pos + segmentVLength + segmentLengthNum))
         pos += segmentVLength + segmentLengthNum
     }
 

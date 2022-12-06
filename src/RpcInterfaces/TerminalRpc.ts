@@ -43,7 +43,7 @@ export interface ITerminalRpc extends EventEmitter {
      */
     launchTerminalSession(
         modelId: string,
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'createNew'; spec: LauncherSpec },
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec },
         options?: {
             addFileSystemAccess?: { modelId: string }[]
             terminateAfterInactiveSeconds?: number
@@ -78,7 +78,21 @@ export interface ITerminalRpc extends EventEmitter {
     getTerminalSessions(terminalSessionIds?: string[]): Promise<{
         error?: GenericError
         result?: {
-            terminalSessions: { id: string; startedAt: number; modelId: string }[]
+            terminalSessions: {
+                id: string
+                startedAt: number
+                modelId: string
+                executionLocation:
+                    | {
+                          type: 'persistentLauncher'
+                          persistentLauncherId: string
+                          spec: LauncherSpec
+                      }
+                    | {
+                          type: 'temporaryLauncher'
+                          spec: LauncherSpec
+                      }
+            }[]
         }
     }>
 
