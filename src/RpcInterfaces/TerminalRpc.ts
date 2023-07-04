@@ -8,27 +8,25 @@ export type TerminalSessionTerminatedReason =
       }
     | {
           code: 'process_exit'
-          details: {
-              exitCode?: number
-              signal?: string
-              oom: boolean
-          }
+          exitCode?: number
+          signal?: string
+          oom: boolean
       }
 
 export interface ITerminalRpc extends EventEmitter {
     /**
      * Event emitted when output is received from a terminal.
      */
-    on(event: 'data', handler: (terminalSessionId: string, data: Buffer) => void): this
-    emit(event: 'data', terminalSessionId: string, data: Buffer): boolean
-    removeListener(event: 'data', handler: (terminalSessionId: string, data: Buffer) => void): this
+    on(event: 'data', handler: (params: { terminalSessionId: string; data: Buffer }) => void): this
+    emit(event: 'data', params: { terminalSessionId: string; data: Buffer }): boolean
+    removeListener(event: 'data', handler: (params: { terminalSessionId: string; data: Buffer }) => void): this
 
     /**
      * Event emitted when a terminal session exits.
      */
-    on(event: 'exit', handler: (terminalSessionId: string, reason: TerminalSessionTerminatedReason) => void): this
-    emit(event: 'exit', terminalSessionId: string, reason: TerminalSessionTerminatedReason): boolean
-    removeListener(event: 'exit', handler: (terminalSessionId: string, reason: TerminalSessionTerminatedReason) => void): this
+    on(event: 'exit', handler: (params: { terminalSessionId: string; reason: TerminalSessionTerminatedReason }) => void): this
+    emit(event: 'exit', params: { terminalSessionId: string; reason: TerminalSessionTerminatedReason }): boolean
+    removeListener(event: 'exit', handler: (params: { terminalSessionId: string; reason: TerminalSessionTerminatedReason }) => void): this
 
     /**
      * Launches a new terminal session.
@@ -41,17 +39,17 @@ export interface ITerminalRpc extends EventEmitter {
      * rows: The number of rows to use in the terminal.
      * @param subscribeToEvents If true, immediately subscribes you to events "data" and "exit" for the terminal session. Default: true.
      */
-    launchTerminalSession(
-        modelId: string,
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec },
+    launchTerminalSession(params: {
+        modelId: string
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }
         options?: {
             addFileSystemAccess?: { modelId: string }[]
             terminateAfterInactiveSeconds?: number
             cols?: number
             rows?: number
-        },
+        }
         subscribeToEvents?: boolean
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'persistent_launcher_not_found' | 'quota_exceeded' | 'server_overloaded'
@@ -66,7 +64,7 @@ export interface ITerminalRpc extends EventEmitter {
      * Terminates a running terminal session.
      * @param terminalSessionId The terminal session's id.
      */
-    terminateTerminalSession(terminalSessionId: string): Promise<{
+    terminateTerminalSession(params: { terminalSessionId: string }): Promise<{
         error?: { code: 'terminal_session_not_found' } | GenericError
         result?: {}
     }>
@@ -75,7 +73,7 @@ export interface ITerminalRpc extends EventEmitter {
      * Retrieve information about running terminal sessions. If the requested session wasn't returned, it means it doesn't exist (or you don't have access to it).
      * @param terminalSessionIds Which sessions to fetch. If unspecified, all running sessions will be fetched.
      */
-    getTerminalSessions(terminalSessionIds?: string[]): Promise<{
+    getTerminalSessions(params: { terminalSessionIds?: string[] }): Promise<{
         error?: GenericError
         result?: {
             terminalSessions: {
@@ -101,10 +99,7 @@ export interface ITerminalRpc extends EventEmitter {
      * @param terminalSessionId The terminal session's id.
      * @param data Data to write.
      */
-    writeToTerminalSession(
-        terminalSessionId: string,
-        data: string | Buffer
-    ): Promise<{
+    writeToTerminalSession(params: { terminalSessionId: string; data: string | Buffer }): Promise<{
         error?: { code: 'terminal_session_not_found' } | GenericError
         result?: {}
     }>
@@ -114,10 +109,7 @@ export interface ITerminalRpc extends EventEmitter {
      * @param terminalSessionId The terminal session's id.
      * @param size The new size of the terminal.
      */
-    resizeTerminalSession(
-        terminalSessionId: string,
-        size: { cols: number; rows: number }
-    ): Promise<{
+    resizeTerminalSession(params: { terminalSessionId: string; size: { cols: number; rows: number } }): Promise<{
         error?: { code: 'terminal_session_not_found' } | GenericError
         result?: {}
     }>
@@ -127,10 +119,7 @@ export interface ITerminalRpc extends EventEmitter {
      * @param terminalSessionId The terminal session's id.
      * @param modelId Model to add access to
      */
-    addFilesystemAccessForTerminalSession(
-        terminalSessionId: string,
-        modelId: string
-    ): Promise<{
+    addFilesystemAccessForTerminalSession(params: { terminalSessionId: string; modelId: string }): Promise<{
         error?: { code: 'terminal_session_not_found' | 'invalid_executor_type' | 'model_not_found' } | GenericError
         result?: {}
     }>
@@ -141,7 +130,7 @@ export interface ITerminalRpc extends EventEmitter {
      * Subscriptions are based on the WebSocket connection. If you reconnect with a new WebSocket, you must call this again.
      * @param terminalSessionId The terminal session's id.
      */
-    subscribeToEvents(terminalSessionId: string): Promise<{
+    subscribeToEvents(params: { terminalSessionId: string }): Promise<{
         error?:
             | {
                   code: 'terminal_session_not_found'
@@ -154,7 +143,7 @@ export interface ITerminalRpc extends EventEmitter {
      * Remove the subscription.
      * @param terminalSessionId The terminal session's id.
      */
-    unsubscribeFromEvents(terminalSessionId: string): Promise<{
+    unsubscribeFromEvents(params: { terminalSessionId: string }): Promise<{
         error?: { code: 'not_subscribed' | 'too_many_requests' | 'unknown' } | { code: 'invalid_parameter'; parameterName: string; reason: string }
         result?: {}
     }>

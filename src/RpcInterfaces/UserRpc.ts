@@ -5,7 +5,7 @@ export interface IUserRpc {
      * Retrieves a list of matching users from a given search string. Will compare the searchTerm to the user's username.
      * @param searchTerm The term to compare to each username.
      */
-    findMatchingUsers(searchTerm: string): Promise<{
+    findMatchingUsers(params: { searchTerm: string }): Promise<{
         error?: GenericError
         result?: {
             users: {
@@ -19,7 +19,7 @@ export interface IUserRpc {
      * Retrieve information about users. If the requested user wasn't returned, it means that the user doesn't exist.
      * @param userIds Which users to fetch.
      */
-    getUsers(userIds: string[]): Promise<{
+    getUsers(params: { userIds: string[] }): Promise<{
         error?: GenericError
         result?: {
             users: {
@@ -35,7 +35,7 @@ export interface IUserRpc {
      * If the requested notification wasn't returned, it means that the notification doesn't exist.
      * @param notificationIds Which notifications to fetch. If unspecified, all notifications will be fetched.
      */
-    getNotifications(notificationIds?: string[]): Promise<{
+    getNotifications(params: { notificationIds?: string[] }): Promise<{
         error?: GenericError
         result?: {
             notifications: {
@@ -77,13 +77,10 @@ export interface IUserRpc {
 
     /**
      * Delete or set status to viewed for a given notification.
-     * @param notificationid The notification's id.
+     * @param notificationId The notification's id.
      * @param action Whether to delete or set the notification as viewed.
      */
-    setNotification(
-        notificationid: string,
-        action: 'delete' | 'viewed'
-    ): Promise<{
+    setNotification(params: { notificationId: string; action: 'delete' | 'viewed' }): Promise<{
         error?: { code: 'notification_not_found' } | GenericError
         result?: {}
     }>
@@ -94,13 +91,13 @@ export interface IUserRpc {
      * @param resources IDs of models, datasets or persistent launchers. Will only include data from these
      * resources. If unspecified, all data will be included.
      */
-    getBillingStats(
+    getBillingStats(params: {
         billingCycle?: {
             year: number
             month: 'JAN' | 'FEB' | 'MAR' | 'APR' | 'MAY' | 'JUN' | 'JUL' | 'AUG' | 'SEP' | 'OCT' | 'NOV' | 'DEC'
-        },
+        }
         resources?: string[]
-    ): Promise<{
+    }): Promise<{
         error?: GenericError
         result?: {
             year: number

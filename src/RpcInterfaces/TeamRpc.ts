@@ -8,10 +8,7 @@ export interface ITeamRpc {
      * @param description A description of the team.
      * @returns The id of the created team.
      */
-    createTeam(
-        name: string,
-        description: string
-    ): Promise<{
+    createTeam(params: { name: string; description: string }): Promise<{
         error?: { code: 'quota_exceeded' } | GenericError
         result?: {
             teamId: string
@@ -23,13 +20,13 @@ export interface ITeamRpc {
      * @param teamId The team's id.
      * @param properties Properties and values to change. Undefined fields will not be changed.
      */
-    updateTeam(
-        teamId: string,
+    updateTeam(params: {
+        teamId: string
         properties: {
             name?: string
             description?: string
         }
-    ): Promise<{
+    }): Promise<{
         error?: { code: 'team_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -39,7 +36,7 @@ export interface ITeamRpc {
      * If the requested team wasn't returned, it means that the team doesn't exist (or you don't have access to it).
      * @param teamIds Which teams to fetch. If unspecified, all teams will be fetched.
      */
-    getTeams(teamIds?: string[]): Promise<{
+    getTeams(params: { teamIds?: string[] }): Promise<{
         error?: GenericError
         result?: {
             teams: Team[]
@@ -51,10 +48,7 @@ export interface ITeamRpc {
      * @param teamId The team's id.
      * @param users Users to invite. If "role" is unspecified, the user will be assigned the role "Member".
      */
-    inviteUsersToTeam(
-        teamId: string,
-        users: { userId: string; role?: string }[]
-    ): Promise<{
+    inviteUsersToTeam(params: { teamId: string; users: { userId: string; role?: string }[] }): Promise<{
         error?: { code: 'team_not_found' | 'user_not_found' | 'role_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -64,10 +58,7 @@ export interface ITeamRpc {
      * @param teamId The team's id.
      * @param userIds userId of each user to remove.
      */
-    removeUsersFromTeam(
-        teamId: string,
-        userIds: string[]
-    ): Promise<{
+    removeUsersFromTeam(params: { teamId: string; userIds: string[] }): Promise<{
         error?: { code: 'team_not_found' | 'member_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -76,7 +67,7 @@ export interface ITeamRpc {
      * Join a team that you have been invited to.
      * @param teamId The team's id.
      */
-    acceptTeamInvitation(teamId: string): Promise<{
+    acceptTeamInvitation(params: { teamId: string }): Promise<{
         error?: { code: 'team_not_found' | 'invite_already_accepted' } | GenericError
         result?: {}
     }>
@@ -85,7 +76,7 @@ export interface ITeamRpc {
      * Reject a team invitation.
      * @param teamId The team's id.
      */
-    denyTeamInvitation(teamId: string): Promise<{
+    denyTeamInvitation(params: { teamId: string }): Promise<{
         error?: { code: 'team_not_found' | 'invite_already_accepted' } | GenericError
         result?: {}
     }>
@@ -96,11 +87,7 @@ export interface ITeamRpc {
      * @param teamId The team's id.
      * @param share Whether to share the model or not.
      */
-    setShareModelWithTeam(
-        modelId: string,
-        teamId: string,
-        share: boolean
-    ): Promise<{
+    setShareModelWithTeam(params: { modelId: string; teamId: string; share: boolean }): Promise<{
         error?: { code: 'team_not_found' | 'model_not_found' | 'model_not_owned' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -111,11 +98,7 @@ export interface ITeamRpc {
      * @param teamId The team's id.
      * @param share Whether to share the dataset or not.
      */
-    setShareDatasetWithTeam(
-        datasetId: string,
-        teamId: string,
-        share: boolean
-    ): Promise<{
+    setShareDatasetWithTeam(params: { datasetId: string; teamId: string; share: boolean }): Promise<{
         error?: { code: 'team_not_found' | 'dataset_not_found' | 'dataset_not_owned' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -123,11 +106,7 @@ export interface ITeamRpc {
     /**
      * Define a new role within a team.
      */
-    createRole(
-        teamId: string,
-        roleName: string,
-        role: Role
-    ): Promise<{
+    createRole(params: { teamId: string; roleName: string; role: Role }): Promise<{
         error?: { code: 'team_not_found' | 'role_name_already_used' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -135,11 +114,7 @@ export interface ITeamRpc {
     /**
      * Edit an existing role.
      */
-    editRole(
-        teamId: string,
-        roleName: string,
-        newRole: { name: string; role: Role }
-    ): Promise<{
+    editRole(params: { teamId: string; roleName: string; newRole: { name: string; role: Role } }): Promise<{
         error?: { code: 'team_not_found' | 'role_not_found' | 'role_name_already_used' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -150,11 +125,7 @@ export interface ITeamRpc {
      * @param roleName Name of the role to remove.
      * @param changeUsersTo If specified, all users with the removed role will be assigned this role. If unspecified and there are users assigned the removed role, the role will not be removed and an error will be returned.
      */
-    removeRole(
-        teamId: string,
-        roleName: string,
-        changeUsersTo?: string
-    ): Promise<{
+    removeRole(params: { teamId: string; roleName: string; changeUsersTo?: string }): Promise<{
         error?: { code: 'team_not_found' | 'role_not_found' | 'role_used' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -165,11 +136,7 @@ export interface ITeamRpc {
      * @param userId id of the user to assign.
      * @param roleName Role to assign.
      */
-    assignRole(
-        teamId: string,
-        userId: string,
-        roleName: string
-    ): Promise<{
+    assignRole(params: { teamId: string; userId: string; roleName: string }): Promise<{
         error?: { code: 'team_not_found' | 'role_not_found' | 'access_denied' | 'member_not_found' | 'cannot_be_owner' | 'user_is_owner' } | GenericError
         result?: {}
     }>

@@ -33,8 +33,8 @@ function convertParameterProviders(params: ParameterProvider[]): [ParameterProvi
 }
 
 function passthroughCall(client: DecthingsClient, api: string, method: string) {
-    return async (...args: any[]) => {
-        const res = await client.rawMethodCall(api, method, args, [])
+    return async (params?: any) => {
+        const res = await client.rawMethodCall(api, method, params || {}, [])
         if (res.error) {
             return { error: res.error }
         }
@@ -48,45 +48,70 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
         updateDataset: passthroughCall(client, 'Dataset', 'updateDataset'),
         deleteDataset: passthroughCall(client, 'Dataset', 'deleteDataset'),
         getDatasets: passthroughCall(client, 'Dataset', 'getDatasets'),
-        addEntries: async (...args: Parameters<IDatasetRpc['addEntries']>) => {
-            if (!Array.isArray(args[1])) {
-                throw new Error('Invalid entries: Expected an array.')
+        addEntries: async (params: Parameters<IDatasetRpc['addEntries']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const newArgs = [args[0], ...args.slice(2)]
+            if (!Array.isArray(params.entries)) {
+                throw new Error('Invalid parameter "entries": Expected an array.')
+            }
+            const newParams = {
+                ...params
+            }
+            delete newParams.entries
             const res = await client.rawMethodCall(
                 'Dataset',
                 'addEntries',
-                newArgs,
-                args[1].map((el: Data | DataElement) => el.serialize())
+                newParams,
+                params.entries.map((entry: Data | DataElement) => {
+                    if (!(entry instanceof Data) && !(entry instanceof DataElement)) {
+                        throw new Error('Invalid parameter "entries": Expected each element to be an instance of Data or DataElement.')
+                    }
+                    return entry.serialize()
+                })
             )
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        addEntriesToNeedsReview: async (...args: Parameters<IDatasetRpc['addEntriesToNeedsReview']>) => {
-            if (!Array.isArray(args[1])) {
-                throw new Error('Invalid entries: Expected an array.')
+        addEntriesToNeedsReview: async (params: Parameters<IDatasetRpc['addEntriesToNeedsReview']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const newArgs = [args[0], ...args.slice(2)]
+            if (!Array.isArray(params.entries)) {
+                throw new Error('Invalid parameter "entries": Expected an array.')
+            }
+            const newParams = {
+                ...params
+            }
+            delete newParams.entries
             const res = await client.rawMethodCall(
                 'Dataset',
                 'addEntriesToNeedsReview',
-                newArgs,
-                args[1].map((el: Data | DataElement) => el.serialize())
+                newParams,
+                params.entries.map((entry: Data | DataElement) => {
+                    if (!(entry instanceof Data) && !(entry instanceof DataElement)) {
+                        throw new Error('Invalid parameter "entries": Expected each element to be an instance of Data or DataElement.')
+                    }
+                    return entry.serialize()
+                })
             )
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        finalizeNeedsReviewEntries: async (...args: Parameters<IDatasetRpc['finalizeNeedsReviewEntries']>) => {
-            if (!Array.isArray(args[1])) {
-                throw new Error('Invalid entries: Expected an array.')
+        finalizeNeedsReviewEntries: async (params: Parameters<IDatasetRpc['finalizeNeedsReviewEntries']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
+            }
+            if (!Array.isArray(params.entries)) {
+                throw new Error('Invalid parameter "entries": Expected an array.')
             }
             const data: Buffer[] = []
-            const newEntries = args[1].map((entry) => {
-                if (!entry) {
+            const newEntries = params.entries.map((entry) => {
+                if (!entry || typeof entry !== 'object') {
                     throw new Error('Invalid entries: Expected each element to be an object.')
                 }
                 if (!(entry.data instanceof Data) && !(entry.data instanceof DataElement)) {
@@ -98,18 +123,20 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
                 return newEntry
             })
 
-            const newArgs = [...args]
-            newArgs[1] = newEntries
+            const newParams = {
+                ...params
+            }
+            newParams.entries = newEntries
 
-            const res = await client.rawMethodCall('Dataset', 'finalizeNeedsReviewEntries', args, data)
+            const res = await client.rawMethodCall('Dataset', 'finalizeNeedsReviewEntries', newParams, data)
 
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        getEntries: async (...args: Parameters<IDatasetRpc['getEntries']>) => {
-            const res = await client.rawMethodCall('Dataset', 'getEntries', args, [])
+        getEntries: async (params: Parameters<IDatasetRpc['getEntries']>[0]) => {
+            const res = await client.rawMethodCall('Dataset', 'getEntries', params, [])
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -128,8 +155,8 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
                 }
             }
         },
-        getNeedsReviewEntries: async (...args: Parameters<IDatasetRpc['getNeedsReviewEntries']>) => {
-            const res = await client.rawMethodCall('Dataset', 'getNeedsReviewEntries', args, [])
+        getNeedsReviewEntries: async (params: Parameters<IDatasetRpc['getNeedsReviewEntries']>[0]) => {
+            const res = await client.rawMethodCall('Dataset', 'getNeedsReviewEntries', params, [])
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -167,80 +194,92 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             removeKeepalive
         }
     }
-    async launchDebugSession(...args: Parameters<IDebugRpc['launchDebugSession']>) {
-        const subscribed = args[3] !== false
-        const res = await this.#internal.client.rawMethodCall('Debug', 'launchDebugSession', args, [], subscribed ? 'ws' : 'http')
+    async launchDebugSession(params: Parameters<IDebugRpc['launchDebugSession']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const subscribed = params.subscribeToEvents !== false
+        const res = await this.#internal.client.rawMethodCall('Debug', 'launchDebugSession', params, [], subscribed ? 'ws' : 'http')
         if (subscribed && res.result) {
             this.#internal.addKeepalive(res.result.debugSessionId)
         }
         return res.result ? { result: res.result } : { error: res.error }
     }
-    async getDebugSessions(...args: Parameters<IDebugRpc['getDebugSessions']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'getDebugSessions', args, [])
+    async getDebugSessions(params: Parameters<IDebugRpc['getDebugSessions']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'getDebugSessions', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async terminateDebugSession(...args: Parameters<IDebugRpc['terminateDebugSession']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'terminateDebugSession', args, [])
+    async terminateDebugSession(params: Parameters<IDebugRpc['terminateDebugSession']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'terminateDebugSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async callCreateModelState(...args: Parameters<IDebugRpc['callCreateModelState']>) {
-        const [newParams, data] = convertParameterProviders(args[1])
-        const newArgs = [...args]
-        newArgs[1] = newParams
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callCreateModelState', newArgs, data)
+    async callCreateModelState(params: Parameters<IDebugRpc['callCreateModelState']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const [newParamProviders, data] = convertParameterProviders(params.params)
+        const newParams = { ...params }
+        newParams.params = newParamProviders
+        const res = await this.#internal.client.rawMethodCall('Debug', 'callCreateModelState', newParams, data)
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async callInstantiateModel(...args: Parameters<IDebugRpc['callInstantiateModel']>) {
-        if (!args[1]) {
-            throw new Error('Expected the second argument to be an object.')
+    async callInstantiateModel(params: Parameters<IDebugRpc['callInstantiateModel']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
         }
-        let newArgs = [...args]
+        if (!params.stateData || typeof params.stateData !== 'object') {
+            throw new Error('Invalid parameter "stateData": Expected an object.')
+        }
+        const newParams = { ...params }
         let dataToSend: Buffer[]
-        if (args[1].type === 'data') {
-            if (!Array.isArray(args[1].data) || args[1].data.some((el) => !Buffer.isBuffer(el))) {
-                throw new Error('For type="data", expected the field "data" of the second argument to be an array of Buffers.')
+        if (params.stateData.type === 'data') {
+            if (!Array.isArray(params.stateData.data) || params.stateData.data.some((el) => !Buffer.isBuffer(el))) {
+                throw new Error('Invalid parameter "stateData": For type="data", expected the field "data" to be an array of Buffers.')
             }
-            dataToSend = args[1].data
-            newArgs[1] = { ...args[1] }
-            delete newArgs[1].data
+            dataToSend = params.stateData.data
+            newParams.stateData = { ...params.stateData }
+            delete newParams.stateData.data
         } else {
             dataToSend = []
         }
 
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callInstantiateModel', newArgs, dataToSend)
+        const res = await this.#internal.client.rawMethodCall('Debug', 'callInstantiateModel', newParams, dataToSend)
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async callTrain(...args: Parameters<IDebugRpc['callTrain']>) {
-        const [newParams, data] = convertParameterProviders(args[2])
-        const newArgs = [...args]
-        newArgs[2] = newParams
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callTrain', newArgs, data)
+    async callTrain(params: Parameters<IDebugRpc['callTrain']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const [newParamProviders, data] = convertParameterProviders(params.params)
+        const newParams = { ...params }
+        newParams.params = newParamProviders
+        const res = await this.#internal.client.rawMethodCall('Debug', 'callTrain', newParams, data)
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getTrainingStatus(...args: Parameters<IDebugRpc['getTrainingStatus']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingStatus', args, [])
+    async getTrainingStatus(params: Parameters<IDebugRpc['getTrainingStatus']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingStatus', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getTrainingMetrics(...args: Parameters<IDebugRpc['getTrainingMetrics']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingMetrics', args, [])
+    async getTrainingMetrics(params: Parameters<IDebugRpc['getTrainingMetrics']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingMetrics', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
@@ -264,18 +303,21 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             }
         }
     }
-    async cancelTrainingSession(...args: Parameters<IDebugRpc['cancelTrainingSession']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'cancelTrainingSession', args, [])
+    async cancelTrainingSession(params: Parameters<IDebugRpc['cancelTrainingSession']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'cancelTrainingSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async callEvaluate(...args: Parameters<IDebugRpc['callEvaluate']>) {
-        const [newParams, data] = convertParameterProviders(args[2])
-        const newArgs = [...args]
-        newArgs[2] = newParams
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callEvaluate', newArgs, data)
+    async callEvaluate(params: Parameters<IDebugRpc['callEvaluate']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const [newParamProviders, data] = convertParameterProviders(params.params)
+        const newParams = { ...params }
+        newParams.params = newParamProviders
+        const res = await this.#internal.client.rawMethodCall('Debug', 'callEvaluate', newParams, data)
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
@@ -295,15 +337,15 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             }
         }
     }
-    async callGetModelState(...args: Parameters<IDebugRpc['callGetModelState']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callGetModelState', args, [])
+    async callGetModelState(params: Parameters<IDebugRpc['callGetModelState']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'callGetModelState', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async downloadStateData(...args: Parameters<IDebugRpc['downloadStateData']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'downloadStateData', args, [])
+    async downloadStateData(params: Parameters<IDebugRpc['downloadStateData']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Debug', 'downloadStateData', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
@@ -314,30 +356,50 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             }
         }
     }
-    async sendToRemoteInspector(...args: Parameters<IDebugRpc['sendToRemoteInspector']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'sendToRemoteInspector', args, [])
+    async sendToRemoteInspector(params: Parameters<IDebugRpc['sendToRemoteInspector']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        let data: Buffer
+        if (typeof params.data === 'string') {
+            data = Buffer.from(params.data)
+        } else {
+            if (!Buffer.isBuffer(params.data)) {
+                throw new Error('Invalid parameter "data": Expected a string or Buffer.')
+            }
+            data = params.data
+        }
+        const newParams = { ...params }
+        delete newParams.data
+        const res = await this.#internal.client.rawMethodCall('Debug', 'sendToRemoteInspector', params, [data])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async subscribeToEvents(...args: Parameters<IDebugRpc['subscribeToEvents']>) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'subscribeToEvents', args, [], 'ws')
+    async subscribeToEvents(params: Parameters<IDebugRpc['subscribeToEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const res = await this.#internal.client.rawMethodCall('Debug', 'subscribeToEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(args[0])
+        this.#internal.addKeepalive(params.debugSessionId)
         return { result: res.result }
     }
-    async unsubscribeFromEvents(...args: Parameters<IDebugRpc['unsubscribeFromEvents']>) {
+    async unsubscribeFromEvents(params: Parameters<IDebugRpc['unsubscribeFromEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
         if (!this.#internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Debug', 'unsubscribeFromEvents', args, [], 'ws')
+        const res = await this.#internal.client.rawMethodCall('Debug', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(args[0])
+        this.#internal.removeKeepalive(params.debugSessionId)
         return { result: res.result }
     }
 }
@@ -346,13 +408,14 @@ export function makeDebugRpc(client: DecthingsClient, addKeepalive: (id: string)
     const rpc = new DebugRpc(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Debug') {
-            if (eventName === 'stdout' || eventName === 'stderr') {
-                rpc.emit(eventName, params[0], data[0])
+            if (eventName === 'stdout' || eventName === 'stderr' || eventName == 'remoteInspectorData') {
+                params.data = data[0]
+                rpc.emit(eventName, params)
             } else {
                 if (eventName === 'exit') {
-                    removeKeepalive(params[0])
+                    removeKeepalive(params.debugSessionId)
                 }
-                rpc.emit(eventName, ...params)
+                rpc.emit(eventName, params)
             }
         }
     })
@@ -361,17 +424,20 @@ export function makeDebugRpc(client: DecthingsClient, addKeepalive: (id: string)
 
 export function makeFsRpc(client: DecthingsClient): IFsRpc {
     return {
-        lookup: async (...args: Parameters<IFsRpc['lookup']>) => {
-            const newArgs = [...args]
-            if (typeof args[3] === 'string') {
-                newArgs[3] = Buffer.from(args[3]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[3])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[3] = args[3].toString('base64')
+        lookup: async (params: Parameters<IFsRpc['lookup']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'lookup', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
+                }
+                newParams.name = params.name.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'lookup', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
@@ -379,24 +445,27 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
         },
         setattr: passthroughCall(client, 'FS', 'setattr'),
         getattr: passthroughCall(client, 'FS', 'getattr'),
-        mknod: async (...args: Parameters<IFsRpc['mknod']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[2] = args[2].toString('base64')
+        mknod: async (params: Parameters<IFsRpc['mknod']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'mknod', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
+                }
+                newParams.name = params.name.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'mknod', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        read: async (...args: Parameters<IFsRpc['read']>) => {
-            const res = await client.rawMethodCall('FS', 'read', args, [])
+        read: async (params: Parameters<IFsRpc['read']>[0]) => {
+            const res = await client.rawMethodCall('FS', 'read', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -407,36 +476,50 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
                 }
             }
         },
-        write: async (...args: Parameters<IFsRpc['write']>) => {
-            const newArgs = [...args]
-            if (!Buffer.isBuffer(args[2])) {
-                throw new Error('Invalid data: Expected a Buffer.')
+        write: async (params: Parameters<IFsRpc['write']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            newArgs.splice(2, 1)
-            const res = await client.rawMethodCall('FS', 'write', newArgs, [args[2]])
+            const newParams = { ...params }
+            if (!Buffer.isBuffer(params.data)) {
+                throw new Error('Invalid parameter "data": Expected a Buffer.')
+            }
+            delete newParams.data
+            const res = await client.rawMethodCall('FS', 'write', newParams, [params.data])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        symlink: async (...args: Parameters<IFsRpc['symlink']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
+        symlink: async (params: Parameters<IFsRpc['symlink']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
+            }
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
             } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
                 }
-                newArgs[2] = args[2].toString('base64')
+                newParams.name = params.name.toString('base64')
             }
-            const res = await client.rawMethodCall('FS', 'symlink', newArgs, [])
+            if (typeof params.link === 'string') {
+                newParams.link = Buffer.from(params.link).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.link)) {
+                    throw new Error('Invalid parameter "link": Expected a string or Buffer.')
+                }
+                newParams.link = params.link.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'symlink', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        readlink: async (...args: Parameters<IFsRpc['readlink']>) => {
-            const res = await client.rawMethodCall('FS', 'readlink', args, [])
+        readlink: async (params: Parameters<IFsRpc['readlink']>[0]) => {
+            const res = await client.rawMethodCall('FS', 'readlink', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -447,96 +530,111 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
                 }
             }
         },
-        mkdir: async (...args: Parameters<IFsRpc['mkdir']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[2] = args[2].toString('base64')
+        mkdir: async (params: Parameters<IFsRpc['mkdir']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'mkdir', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
+                }
+                newParams.name = params.name.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'mkdir', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        unlink: async (...args: Parameters<IFsRpc['unlink']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[2] = args[2].toString('base64')
+        unlink: async (params: Parameters<IFsRpc['unlink']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'unlink', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
+                }
+                newParams.name = params.name.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'unlink', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        rmdir: async (...args: Parameters<IFsRpc['rmdir']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[2] = args[2].toString('base64')
+        rmdir: async (params: Parameters<IFsRpc['rmdir']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'rmdir', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
+                }
+                newParams.name = params.name.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'rmdir', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        rename: async (...args: Parameters<IFsRpc['rename']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[2] = args[2].toString('base64')
+        rename: async (params: Parameters<IFsRpc['rename']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            if (typeof args[4] === 'string') {
-                newArgs[4] = Buffer.from(args[4]).toString('base64')
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
             } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid newname: Expected a string or Buffer.')
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
                 }
-                newArgs[4] = args[4].toString('base64')
+                newParams.name = params.name.toString('base64')
             }
-            const res = await client.rawMethodCall('FS', 'rename', newArgs, [])
+            if (typeof params.newname === 'string') {
+                newParams.newname = Buffer.from(params.newname).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.newname)) {
+                    throw new Error('Invalid parameter "newname": Expected a string or Buffer.')
+                }
+                newParams.newname = params.newname.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'rename', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        link: async (...args: Parameters<IFsRpc['link']>) => {
-            const newArgs = [...args]
-            if (typeof args[3] === 'string') {
-                newArgs[3] = Buffer.from(args[3]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[3] = args[3].toString('base64')
+        link: async (params: Parameters<IFsRpc['link']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'link', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.newname === 'string') {
+                newParams.newname = Buffer.from(params.newname).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.newname)) {
+                    throw new Error('Invalid parameter "newname": Expected a string or Buffer.')
+                }
+                newParams.newname = params.newname.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'link', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        readdir: async (...args: Parameters<IFsRpc['readdir']>) => {
-            const res = await client.rawMethodCall('FS', 'readdir', args, [])
+        readdir: async (params: Parameters<IFsRpc['readdir']>[0]) => {
+            const res = await client.rawMethodCall('FS', 'readdir', params, [])
             if (res.error) {
                 return { error: res.error }
             }
@@ -551,33 +649,39 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
                 }
             }
         },
-        rmdirAll: async (...args: Parameters<IFsRpc['rmdirAll']>) => {
-            const newArgs = [...args]
-            if (typeof args[2] === 'string') {
-                newArgs[2] = Buffer.from(args[2]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[2])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[2] = args[2].toString('base64')
+        rmdirAll: async (params: Parameters<IFsRpc['rmdirAll']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'rmdirAll', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.name === 'string') {
+                newParams.name = Buffer.from(params.name).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.name)) {
+                    throw new Error('Invalid parameter "name": Expected a string or Buffer.')
+                }
+                newParams.name = params.name.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'rmdirAll', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        copy: async (...args: Parameters<IFsRpc['copy']>) => {
-            const newArgs = [...args]
-            if (typeof args[3] === 'string') {
-                newArgs[3] = Buffer.from(args[3]).toString('base64')
-            } else {
-                if (!Buffer.isBuffer(args[3])) {
-                    throw new Error('Invalid name: Expected a string or Buffer.')
-                }
-                newArgs[3] = args[3].toString('base64')
+        copy: async (params: Parameters<IFsRpc['copy']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const res = await client.rawMethodCall('FS', 'copy', newArgs, [])
+            const newParams = { ...params }
+            if (typeof params.newname === 'string') {
+                newParams.newname = Buffer.from(params.newname).toString('base64')
+            } else {
+                if (!Buffer.isBuffer(params.newname)) {
+                    throw new Error('Invalid parameter "newname": Expected a string or Buffer.')
+                }
+                newParams.newname = params.newname.toString('base64')
+            }
+            const res = await client.rawMethodCall('FS', 'copy', newParams, [])
             if (res.error) {
                 return { error: res.error }
             }
@@ -600,35 +704,41 @@ class LanguageRpc extends EventEmitter implements ILanguageRpc {
             removeKeepalive
         }
     }
-    async startLanguageServer(...args: Parameters<ILanguageRpc['startLanguageServer']>) {
-        const res = await this.#internal.client.rawMethodCall('Language', 'startLanguageServer', args, [], 'ws')
+    async startLanguageServer(params: Parameters<ILanguageRpc['startLanguageServer']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Language', 'startLanguageServer', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
         this.#internal.addKeepalive(res.result.languageServerId)
         return { result: res.result }
     }
-    async writeToLanguageServer(...args: Parameters<ILanguageRpc['writeToLanguageServer']>) {
-        if (!Buffer.isBuffer(args[1])) {
+    async writeToLanguageServer(params: Parameters<ILanguageRpc['writeToLanguageServer']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        if (!Buffer.isBuffer(params.data)) {
             throw new Error('Invalid data: Expected a Buffer.')
         }
-        const newArgs = [...args]
-        newArgs.splice(1, 1)
-        const res = await this.#internal.client.rawMethodCall('Language', 'writeToLanguageServer', newArgs, [args[1]])
+        const newParams = { ...params }
+        delete newParams.data
+        const res = await this.#internal.client.rawMethodCall('Language', 'writeToLanguageServer', newParams, [params.data])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async unsubscribeFromEvents(...args: Parameters<ILanguageRpc['unsubscribeFromEvents']>) {
+    async unsubscribeFromEvents(params: Parameters<ILanguageRpc['unsubscribeFromEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
         if (!this.#internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Language', 'unsubscribeFromEvents', args, [], 'ws')
+        const res = await this.#internal.client.rawMethodCall('Language', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(args[0])
+        this.#internal.removeKeepalive(params.languageServerId)
         return { result: res.result }
     }
 }
@@ -638,12 +748,13 @@ export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: stri
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Language') {
             if (eventName === 'data') {
-                rpc.emit(eventName, params[0], data[0])
+                params.data = data[0]
+                rpc.emit(eventName, params)
             } else {
                 if (eventName === 'exit') {
-                    removeKeepalive(params[0])
+                    removeKeepalive(params.languageServerId)
                 }
-                rpc.emit(eventName, ...params)
+                rpc.emit(eventName, params)
             }
         }
     })
@@ -652,48 +763,54 @@ export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: stri
 
 export function makeModelRpc(client: DecthingsClient): IModelRpc {
     return {
-        createModel: async (...args: Parameters<IModelRpc['createModel']>) => {
-            if (!args[2]) {
-                throw new Error('Invalid executor: Expected an object.')
+        createModel: async (params: Parameters<IModelRpc['createModel']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            if (args[2].type === 'basedOnModelSnapshot') {
-                if (!args[2].initialState) {
-                    throw new Error('Invalid executor.initialState: Expected an object.')
+            if (!params.executor || typeof params.executor !== 'object') {
+                throw new Error('Invalid parameter "executor": Expected an object.')
+            }
+            if (params.executor.type === 'basedOnModelSnapshot') {
+                if (!params.executor.initialState) {
+                    throw new Error('Invalid parameter "executor.initialState": Expected an object.')
                 }
-                if (args[2].initialState.method === 'create') {
-                    const [newParams, data] = convertParameterProviders(args[2].initialState.params)
-                    const newArgs = [...args]
-                    newArgs[2] = {
-                        ...args[2],
+                if (params.executor.initialState.method === 'create') {
+                    const [newParamProviders, data] = convertParameterProviders(params.executor.initialState.params)
+                    const newParams = { ...params }
+                    newParams.executor = {
+                        ...params.executor,
                         initialState: {
-                            ...args[2].initialState,
-                            params: newParams
+                            ...params.executor.initialState,
+                            params: newParamProviders
                         }
                     }
-                    const res = await client.rawMethodCall('Model', 'createModel', newArgs, data)
+                    const res = await client.rawMethodCall('Model', 'createModel', newParams, data)
                     if (res.error) {
                         return { error: res.error }
                     }
                     return { result: res.result }
                 }
-                if (args[2].initialState.method === 'upload') {
-                    const data = args[2].initialState.data
-                    const newArgs = [...args]
-                    newArgs[2] = {
-                        ...args[2],
+                if (params.executor.initialState.method === 'upload') {
+                    const data = params.executor.initialState.data
+                    const newParams = { ...params }
+                    newParams.executor = {
+                        ...params.executor,
                         initialState: {
-                            ...args[2].initialState,
+                            ...params.executor.initialState,
                             data: undefined
                         }
                     }
-                    const res = await client.rawMethodCall('Model', 'createModel', newArgs, data)
+                    if (!Array.isArray(data) || data.some((el) => !Buffer.isBuffer(el))) {
+                        throw new Error('Invalid parameter "executor.initialState.data": Expected an array of Buffers.')
+                    }
+                    const res = await client.rawMethodCall('Model', 'createModel', newParams, data)
                     if (res.error) {
                         return { error: res.error }
                     }
                     return { result: res.result }
                 }
             }
-            const res = await client.rawMethodCall('Model', 'createModel', args, [])
+            const res = await client.rawMethodCall('Model', 'createModel', params, [])
             if (res.error) {
                 return { error: res.error }
             }
@@ -707,23 +824,29 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
         updateModel: passthroughCall(client, 'Model', 'updateModel'),
         getModels: passthroughCall(client, 'Model', 'getModels'),
         setFilesystemSize: passthroughCall(client, 'Model', 'setFilesystemSize'),
-        createState: async (...args: Parameters<IModelRpc['createState']>) => {
-            const [newParams, data] = convertParameterProviders(args[2])
-            const newArgs = [...args]
-            newArgs[2] = newParams
-            const res = await client.rawMethodCall('Model', 'createState', newArgs, data)
+        createState: async (params: Parameters<IModelRpc['createState']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
+            }
+            const [newParamProviders, data] = convertParameterProviders(params.params)
+            const newParams = { ...params }
+            newParams.params = newParamProviders
+            const res = await client.rawMethodCall('Model', 'createState', newParams, data)
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        uploadState: async (...args: Parameters<IModelRpc['uploadState']>) => {
-            if (!Array.isArray(args[2]) || args[2].some((el) => !Buffer.isBuffer(el))) {
-                throw new Error('Invalid data: Expected an array of Buffers.')
+        uploadState: async (params: Parameters<IModelRpc['uploadState']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
             }
-            const newArgs = [...args]
-            newArgs.splice(2, 1)
-            const res = await client.rawMethodCall('Model', 'uploadState', newArgs, args[2])
+            if (!Array.isArray(params.data) || params.data.some((el) => !Buffer.isBuffer(el))) {
+                throw new Error('Invalid parameter "data": Expected an array of Buffers.')
+            }
+            const newParams = { ...params }
+            delete newParams.data
+            const res = await client.rawMethodCall('Model', 'uploadState', newParams, params.data)
             if (res.error) {
                 return { error: res.error }
             }
@@ -735,8 +858,8 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
         updateModelState: passthroughCall(client, 'Model', 'updateModelState'),
         setCurrentModelState: passthroughCall(client, 'Model', 'setCurrentModelState'),
         deleteModelState: passthroughCall(client, 'Model', 'deleteModelState'),
-        getModelState: async (...args: Parameters<IModelRpc['getModelState']>) => {
-            const res = await client.rawMethodCall('Model', 'getModelState', args, [])
+        getModelState: async (params: Parameters<IModelRpc['getModelState']>[0]) => {
+            const res = await client.rawMethodCall('Model', 'getModelState', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -747,8 +870,8 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
                 }
             }
         },
-        getSnapshotState: async (...args: Parameters<IModelRpc['getSnapshotState']>) => {
-            const res = await client.rawMethodCall('Model', 'getSnapshotState', args, [])
+        getSnapshotState: async (params: Parameters<IModelRpc['getSnapshotState']>[0]) => {
+            const res = await client.rawMethodCall('Model', 'getSnapshotState', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -760,19 +883,22 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
             }
         },
         getParameterDefinitions: passthroughCall(client, 'Model', 'getParameterDefinitions'),
-        train: async (...args: Parameters<IModelRpc['train']>) => {
-            const [newParams, data] = convertParameterProviders(args[2])
-            const newArgs = [...args]
-            newArgs[2] = newParams
-            const res = await client.rawMethodCall('Model', 'train', newArgs, data)
+        train: async (params: Parameters<IModelRpc['train']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
+            }
+            const [newParamProviders, data] = convertParameterProviders(params.params)
+            const newParams = { ...params }
+            newParams.params = newParamProviders
+            const res = await client.rawMethodCall('Model', 'train', newParams, data)
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
         getTrainingStatus: passthroughCall(client, 'Model', 'getTrainingStatus'),
-        getTrainingMetrics: async (...args: Parameters<IModelRpc['getTrainingMetrics']>) => {
-            const res = await client.rawMethodCall('Model', 'getTrainingMetrics', args, [])
+        getTrainingMetrics: async (params: Parameters<IModelRpc['getTrainingMetrics']>[0]) => {
+            const res = await client.rawMethodCall('Model', 'getTrainingMetrics', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -799,11 +925,14 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
         getTrainingSysinfo: passthroughCall(client, 'Model', 'getTrainingSysinfo'),
         cancelTrainingSession: passthroughCall(client, 'Model', 'cancelTrainingSession'),
         clearPreviousTrainingSession: passthroughCall(client, 'Model', 'clearPreviousTrainingSession'),
-        evaluate: async (...args: Parameters<IModelRpc['evaluate']>) => {
-            const [newParams, data] = convertParameterProviders(args[1])
-            const newArgs = [...args]
-            newArgs[1] = newParams
-            const res = await client.rawMethodCall('Model', 'evaluate', newArgs, data)
+        evaluate: async (params: Parameters<IModelRpc['evaluate']>[0]) => {
+            if (!params || typeof params !== 'object') {
+                throw new Error('Invalid parameters: Expected an object.')
+            }
+            const [newParamProviders, data] = convertParameterProviders(params.params)
+            const newParams = { ...params }
+            newParams.params = newParamProviders
+            const res = await client.rawMethodCall('Model', 'evaluate', newParams, data)
             if (res.data.length === 0 || res.error || !res.result.success) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -827,8 +956,8 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
             }
         },
         getEvaluations: passthroughCall(client, 'Model', 'getEvaluations'),
-        getFinishedEvaluationResult: async (...args: Parameters<IModelRpc['getFinishedEvaluationResult']>) => {
-            const res = await client.rawMethodCall('Model', 'getFinishedEvaluationResult', args, [])
+        getFinishedEvaluationResult: async (params: Parameters<IModelRpc['getFinishedEvaluationResult']>[0]) => {
+            const res = await client.rawMethodCall('Model', 'getFinishedEvaluationResult', params, [])
             if (res.data.length === 0 || res.error || !res.result.evaluationSuccess) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -880,9 +1009,12 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
             removeKeepalive
         }
     }
-    async spawnCommand(...args: Parameters<ISpawnedRpc['spawnCommand']>) {
-        const subscribed = args[4] !== false
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'spawnCommand', args, [], subscribed ? 'ws' : 'http')
+    async spawnCommand(params: Parameters<ISpawnedRpc['spawnCommand']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const subscribed = params.subscribeToEvents !== false
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'spawnCommand', params, [], subscribed ? 'ws' : 'http')
         if (res.error) {
             return { error: res.error }
         }
@@ -891,9 +1023,12 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         }
         return { result: res.result }
     }
-    async spawnCommandForModel(...args: Parameters<ISpawnedRpc['spawnCommandForModel']>) {
-        const subscribed = args[5] !== false
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'spawnCommandForModel', args, [], subscribed ? 'ws' : 'http')
+    async spawnCommandForModel(params: Parameters<ISpawnedRpc['spawnCommandForModel']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const subscribed = params.subscribeToEvents !== false
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'spawnCommandForModel', params, [], subscribed ? 'ws' : 'http')
         if (res.error) {
             return { error: res.error }
         }
@@ -902,55 +1037,64 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         }
         return { result: res.result }
     }
-    async terminateSpawnedCommand(...args: Parameters<ISpawnedRpc['terminateSpawnedCommand']>) {
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'terminateSpawnedCommand', args, [])
+    async terminateSpawnedCommand(params: Parameters<ISpawnedRpc['terminateSpawnedCommand']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'terminateSpawnedCommand', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getSpawnedCommands(...args: Parameters<ISpawnedRpc['getSpawnedCommands']>) {
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'getSpawnedCommands', args, [])
+    async getSpawnedCommands(params: Parameters<ISpawnedRpc['getSpawnedCommands']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'getSpawnedCommands', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async writeToSpawnedCommand(...args: Parameters<ISpawnedRpc['writeToSpawnedCommand']>) {
+    async writeToSpawnedCommand(params: Parameters<ISpawnedRpc['writeToSpawnedCommand']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
         let data: Buffer
-        if (typeof args[1] === 'string') {
-            data = Buffer.from(args[1])
+        if (typeof params.data === 'string') {
+            data = Buffer.from(params.data)
         } else {
-            if (!Buffer.isBuffer(args[1])) {
-                throw new Error('Invalid data: Expected a Buffer.')
+            if (!Buffer.isBuffer(params.data)) {
+                throw new Error('Invalid parameter "data": Expected a string or Buffer.')
             }
-            data = args[1]
+            data = params.data
         }
-        const newArgs = [...args]
-        newArgs.splice(1, 1)
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'writeToSpawnedCommand', newArgs, [data])
+        const newParams = { ...params }
+        delete newParams.data
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'writeToSpawnedCommand', newParams, [data])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async subscribeToEvents(...args: Parameters<ISpawnedRpc['subscribeToEvents']>) {
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'subscribeToEvents', args, [], 'ws')
+    async subscribeToEvents(params: Parameters<ISpawnedRpc['subscribeToEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'subscribeToEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(args[0])
+        this.#internal.addKeepalive(params.spawnedCommandId)
         return { result: res.result }
     }
-    async unsubscribeFromEvents(...args: Parameters<ISpawnedRpc['unsubscribeFromEvents']>) {
+    async unsubscribeFromEvents(params: Parameters<ISpawnedRpc['unsubscribeFromEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
         if (!this.#internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'unsubscribeFromEvents', args, [], 'ws')
+        const res = await this.#internal.client.rawMethodCall('Spawned', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(args[0])
+        this.#internal.removeKeepalive(params.spawnedCommandId)
         return { result: res.result }
     }
 }
@@ -960,12 +1104,13 @@ export function makeSpawnedRpc(client: DecthingsClient, addKeepalive: (id: strin
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Spawned') {
             if (eventName === 'stdout' || eventName === 'stderr') {
-                rpc.emit(eventName, params[0], data[0])
+                params.data = data[0]
+                rpc.emit(eventName, params)
             } else {
                 if (eventName === 'exit') {
-                    removeKeepalive(params[0])
+                    removeKeepalive(params.spawnedCommandId)
                 }
-                rpc.emit(eventName, ...params)
+                rpc.emit(eventName, params)
             }
         }
     })
@@ -1004,9 +1149,12 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
             removeKeepalive
         }
     }
-    async launchTerminalSession(...args: Parameters<ITerminalRpc['launchTerminalSession']>) {
-        const subscribed = args[3] !== false
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'launchTerminalSession', args, [], subscribed ? 'ws' : 'http')
+    async launchTerminalSession(params: Parameters<ITerminalRpc['launchTerminalSession']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const subscribed = params.subscribeToEvents !== false
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'launchTerminalSession', params, [], subscribed ? 'ws' : 'http')
         if (res.error) {
             return { error: res.error }
         }
@@ -1015,69 +1163,78 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
         }
         return { result: res.result }
     }
-    async terminateTerminalSession(...args: Parameters<ITerminalRpc['terminateTerminalSession']>) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'terminateTerminalSession', args, [])
+    async terminateTerminalSession(params: Parameters<ITerminalRpc['terminateTerminalSession']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'terminateTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getTerminalSessions(...args: Parameters<ITerminalRpc['getTerminalSessions']>) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'getTerminalSessions', args, [])
+    async getTerminalSessions(params: Parameters<ITerminalRpc['getTerminalSessions']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'getTerminalSessions', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async writeToTerminalSession(...args: Parameters<ITerminalRpc['writeToTerminalSession']>) {
+    async writeToTerminalSession(params: Parameters<ITerminalRpc['writeToTerminalSession']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
         let data: Buffer
-        if (typeof args[1] === 'string') {
-            data = Buffer.from(args[1])
+        if (typeof params.data === 'string') {
+            data = Buffer.from(params.data)
         } else {
-            if (!Buffer.isBuffer(args[1])) {
-                throw new Error('Invalid data: Expected a Buffer.')
+            if (!Buffer.isBuffer(params.data)) {
+                throw new Error('Invalid parameter "data": Expected a string or Buffer.')
             }
-            data = args[1]
+            data = params.data
         }
-        const newArgs = [...args]
-        newArgs.splice(1, 1)
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'writeToTerminalSession', newArgs, [data])
+        const newParams = { ...params }
+        delete newParams.data
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'writeToTerminalSession', newParams, [data])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async resizeTerminalSession(...args: Parameters<ITerminalRpc['resizeTerminalSession']>) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'resizeTerminalSession', args, [])
+    async resizeTerminalSession(params: Parameters<ITerminalRpc['resizeTerminalSession']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'resizeTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async addFilesystemAccessForTerminalSession(...args: Parameters<ITerminalRpc['addFilesystemAccessForTerminalSession']>) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'addFilesystemAccessForTerminalSession', args, [])
+    async addFilesystemAccessForTerminalSession(params: Parameters<ITerminalRpc['addFilesystemAccessForTerminalSession']>[0]) {
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'addFilesystemAccessForTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async subscribeToEvents(...args: Parameters<ITerminalRpc['subscribeToEvents']>) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'subscribeToEvents', args, [], 'ws')
+    async subscribeToEvents(params: Parameters<ITerminalRpc['subscribeToEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'subscribeToEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(args[0])
+        this.#internal.addKeepalive(params.terminalSessionId)
         return { result: res.result }
     }
-    async unsubscribeFromEvents(...args: Parameters<ITerminalRpc['unsubscribeFromEvents']>) {
+    async unsubscribeFromEvents(params: Parameters<ITerminalRpc['unsubscribeFromEvents']>[0]) {
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: Expected an object.')
+        }
         if (!this.#internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'unsubscribeFromEvents', args, [], 'ws')
+        const res = await this.#internal.client.rawMethodCall('Terminal', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(args[0])
+        this.#internal.removeKeepalive(params.terminalSessionId)
         return { result: res.result }
     }
 }
@@ -1087,12 +1244,13 @@ export function makeTerminalRpc(client: DecthingsClient, addKeepalive: (id: stri
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Terminal') {
             if (eventName === 'data') {
-                rpc.emit(eventName, params[0], data[0])
+                params.data = data[0]
+                rpc.emit(eventName, params)
             } else {
                 if (eventName === 'exit') {
-                    removeKeepalive(params[0])
+                    removeKeepalive(params.terminalSessionId)
                 }
-                rpc.emit(eventName, ...params)
+                rpc.emit(eventName, params)
             }
         }
     })

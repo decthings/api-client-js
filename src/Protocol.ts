@@ -4,7 +4,7 @@ import * as Varint from './Varint'
 export type RequestMessage = {
     api: string
     method: string
-    params: any[]
+    params: any
     apiKey?: string
 }
 
@@ -16,24 +16,33 @@ export type Response = {
 export type Event = {
     event: string
     api: string
-    params: any[]
+    params: any
 }
 
 // Message protocol:
-// 1. Varint specifying length of JSON data
-// 2. JSON data
-// Repeated:
-// 3. Varint encoding length of next data segment
-// 4. next data segment
-export function serializeForHttp(params: any[], data: Buffer[]): Buffer {
+// 1. u8 specifying number of additional data segments
+// 2. Varint specifying length of JSON data
+// 3. One varint for each data segment, specifying the length of data segment
+// 4. JSON data
+// 5. Data segments
+export function serializeForHttp(params: any, data: Buffer[]): Buffer {
+    const numAdditionalSegmentsBuf = Buffer.alloc(1)
+    numAdditionalSegmentsBuf.writeUint8(data.length, 0)
+
     const msgBuf = Buffer.from(JSON.stringify(params))
     const msgLengthVarint = Varint.serializeVarUint64(msgBuf.byteLength)
 
-    const final: Buffer[] = [msgLengthVarint, msgBuf]
+    const final: Buffer[] = [numAdditionalSegmentsBuf, msgLengthVarint]
 
     data.forEach((el) => {
         const elLengthVarint = Varint.serializeVarUint64(el.byteLength)
-        final.push(elLengthVarint, el)
+        final.push(elLengthVarint)
+    })
+
+    final.push(msgBuf)
+
+    data.forEach((el) => {
+        final.push(el)
     })
 
     return Buffer.concat(final)
@@ -41,23 +50,25 @@ export function serializeForHttp(params: any[], data: Buffer[]): Buffer {
 
 // Message protocol:
 // 1. u32 id
-// 2. Varint specifying length of JSON data
-// 3. JSON data
-// Repeated:
-// 4. Varint encoding length of next data segment
-// 5. next data segment
+// 2. u8 specifying number of additional data segments
+// 3. Varint specifying length of JSON data
+// 4. One varint for each data segment, specifying the length of data segment
+// 5. JSON data
+// 6. Data segments
 export function serializeForWebsocket(id: number, message: RequestMessage, data: Buffer[]): Buffer {
     const idBuf = Buffer.alloc(4)
     idBuf.writeUint32BE(id, 0)
 
+    const numAdditionalSegmentsBuf = Buffer.alloc(1)
+    numAdditionalSegmentsBuf.writeUint8(data.length, 0)
+
     const msgBuf = Buffer.from(JSON.stringify(message))
     const msgLengthVarint = Varint.serializeVarUint64(msgBuf.byteLength)
 
-    const final: Buffer[] = [idBuf, msgLengthVarint, msgBuf]
+    const final: Buffer[] = [idBuf, numAdditionalSegmentsBuf, msgLengthVarint, msgBuf]
 
     data.forEach((el) => {
-        const elLengthVarint = Varint.serializeVarUint64(el.byteLength)
-        final.push(elLengthVarint, el)
+        final.push(el)
     })
 
     return Buffer.concat(final)

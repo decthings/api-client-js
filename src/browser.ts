@@ -1,5 +1,5 @@
 import { DecthingsClient, DecthingsClientOptions } from './Client'
-;(DecthingsClient as any).WebSocket = (address) => {
+;(DecthingsClient as any).WebSocket = (address: string) => {
     const ws = new WebSocket(address)
     ws.binaryType = 'arraybuffer'
     return ws

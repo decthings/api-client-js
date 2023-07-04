@@ -19,13 +19,14 @@ export interface IModelRpc {
      * @param executor Specifies the executor to use for the model.
      * @returns The id of the created model.
      */
-    createModel(
-        name: string,
-        description: string,
+    createModel(params: {
+        name: string
+        description: string
         executor:
             | {
-                  type: 'nodeJsJs' | 'nodeJsTs' | 'python'
+                  type: 'nodeJsJs' | 'nodeJsTs' | 'python' | 'pythonPytorch'
                   empty?: boolean
+                  parameterDefinitions?: StatefulParameterDefinitions
               }
             | { type: 'composite' }
             | {
@@ -47,7 +48,7 @@ export interface IModelRpc {
                   modelId: string
                   snapshotId?: string
               }
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'quota_exceeded' | 'server_overloaded'
@@ -64,7 +65,7 @@ export interface IModelRpc {
      * Wait for the model create to finish.
      * @param modelId The model's id.
      */
-    waitForModelToBeCreated(modelId: string): Promise<{
+    waitForModelToBeCreated(params: { modelId: string }): Promise<{
         error?: { code: 'model_not_found' | 'model_already_created' } | GenericError
         result?: {
             createModelFailed?: {
@@ -108,7 +109,7 @@ export interface IModelRpc {
      * Delete a model and the associated filesystem, snapshots, states etc. If the model is being created, it will be cancelled.
      * @param modelId The model's id.
      */
-    deleteModel(modelId: string): Promise<{
+    deleteModel(params: { modelId: string }): Promise<{
         error?: { code: 'model_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -118,10 +119,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param snapshotName The name of the snapshot.
      */
-    snapshotModel(
-        modelId: string,
-        snapshotName: string
-    ): Promise<{
+    snapshotModel(params: { modelId: string; snapshotName: string }): Promise<{
         error?: { code: 'model_not_found' | 'access_denied' | 'quota_exceeded' | 'server_overloaded' } | GenericError
         result?: {
             snapshotId: string
@@ -134,13 +132,13 @@ export interface IModelRpc {
      * @param snapshotId The snapshot's id.
      * @param Properties and values to change. Empty fields will not be changed.
      */
-    updateSnapshot(
-        modelId: string,
-        snapshotId: string,
+    updateSnapshot(params: {
+        modelId: string
+        snapshotId: string
         properties: {
             name?: string
         }
-    ): Promise<{
+    }): Promise<{
         error?: { code: 'model_not_found' | 'snapshot_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -150,10 +148,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param snapshotId The snapshot's id.
      */
-    deleteSnapshot(
-        modelId: string,
-        snapshotId: string
-    ): Promise<{
+    deleteSnapshot(params: { modelId: string; snapshotId: string }): Promise<{
         error?: { code: 'model_not_found' | 'snapshot_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -163,8 +158,8 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param properties Properties and values to change. Empty fields will not be changed.
      */
-    updateModel(
-        modelId: string,
+    updateModel(params: {
+        modelId: string
         properties: {
             name?: string
             description?: string
@@ -184,7 +179,7 @@ export interface IModelRpc {
             compositeModelDefinition?: CompositeModelDefinition
             editingCompositeModelDefinition?: CompositeModelDefinition
         }
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'access_denied'
@@ -197,7 +192,7 @@ export interface IModelRpc {
      * Retrieve information about models. If the requested model wasn't returned, it means that the model doesn't exist (or you don't have access to it).
      * @param modelIds Which models to fetch. If unspecified, all models will be fetched.
      */
-    getModels(modelIds?: string[]): Promise<{
+    getModels(params: { modelIds?: string[] }): Promise<{
         error?: GenericError
         result?: {
             models: Model[]
@@ -211,10 +206,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param newFilesystemSizeMebibytes The new size to use.
      */
-    setFilesystemSize(
-        modelId: string,
-        newFilesystemSizeMebibytes: number
-    ): Promise<{
+    setFilesystemSize(params: { modelId: string; newFilesystemSizeMebibytes: number }): Promise<{
         error?:
             | { code: 'model_not_found' | 'invalid_executor_type' | 'not_enough_space' | 'access_denied' | 'quota_exceeded' | 'server_overloaded' }
             | GenericError
@@ -228,12 +220,12 @@ export interface IModelRpc {
      * @param params Parameters to provide to the model.
      * @param executionLocation Which launcher to use for running the operation.
      */
-    createState(
-        modelId: string,
-        name: string,
-        params: ParameterProvider[],
+    createState(params: {
+        modelId: string
+        name: string
+        params: ParameterProvider[]
         executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code:
@@ -290,12 +282,7 @@ export interface IModelRpc {
      * @param deleteStates If provided, these states will be deleted when the new state has been uploaded, in a single atomic operation. If
      * either the upload or the delete fails, both the upload and the delete operations are aborted and an error is returned.
      */
-    uploadState(
-        modelId: string,
-        name: string,
-        data: Buffer[],
-        deleteStates?: string[]
-    ): Promise<{
+    uploadState(params: { modelId: string; name: string; data: Buffer[]; deleteStates?: string[] }): Promise<{
         error?:
             | { code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'quota_exceeded' | 'state_not_found' | 'state_is_current' }
             | GenericError
@@ -309,10 +296,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param stateId The state's id.
      */
-    cancelCreateState(
-        modelId: string,
-        stateId: string
-    ): Promise<{
+    cancelCreateState(params: { modelId: string; stateId: string }): Promise<{
         error?: { code: 'model_not_found' | 'state_not_found' | 'state_already_created' | 'invalid_executor_type' } | GenericError
         result?: {}
     }>
@@ -321,7 +305,7 @@ export interface IModelRpc {
      * Get all states that are being created on a model.
      * @param modelId The model's id.
      */
-    getCreatingStates(modelId: string): Promise<{
+    getCreatingStates(params: { modelId: string }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' } | GenericError
         result?: {
             states: { id: string; name: string; startedAt: number }[]
@@ -333,10 +317,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param stateId The state's id.
      */
-    waitForStateToBeCreated(
-        modelId: string,
-        stateId: string
-    ): Promise<{
+    waitForStateToBeCreated(params: { modelId: string; stateId: string }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'state_not_found' | 'state_already_created' } | GenericError
         result?: {
             failed?: {
@@ -380,11 +361,7 @@ export interface IModelRpc {
      * @param stateId The id of the state to update.
      * @param properties Properties and values to change. Empty fields will not be changed.
      */
-    updateModelState(
-        modelId: string,
-        stateId: string,
-        properties: { name?: string }
-    ): Promise<{
+    updateModelState(params: { modelId: string; stateId: string; properties: { name?: string } }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'state_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -394,10 +371,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param stateId The id of the state to set as the current state.
      */
-    setCurrentModelState(
-        modelId: string,
-        stateId: string
-    ): Promise<{
+    setCurrentModelState(params: { modelId: string; stateId: string }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'state_not_found' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -407,10 +381,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param stateId The state's id.
      */
-    deleteModelState(
-        modelId: string,
-        stateId: string
-    ): Promise<{
+    deleteModelState(params: { modelId: string; stateId: string }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'state_not_found' | 'state_is_current' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -421,11 +392,7 @@ export interface IModelRpc {
      * @param segments Which segments to fetch. Defaults to the first one ([0]).
      * @param stateId The state's id. Defaults to the current state.
      */
-    getModelState(
-        modelId: string,
-        segments?: number[],
-        stateId?: string
-    ): Promise<{
+    getModelState(params: { modelId: string; segments?: number[]; stateId?: string }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'state_not_found' | 'segment_out_of_range' } | GenericError
         result?: {
             data: Buffer[]
@@ -438,11 +405,7 @@ export interface IModelRpc {
      * @param snapshotId The snapshot's id.
      * @param segments Which segments to fetch. Defaults to the first one ([0]).
      */
-    getSnapshotState(
-        modelId: string,
-        snapshotId: string,
-        segments?: number[]
-    ): Promise<{
+    getSnapshotState(params: { modelId: string; snapshotId: string; segments?: number[] }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' | 'snapshot_not_found' | 'segment_out_of_range' } | GenericError
         result?: {
             data: Buffer[]
@@ -453,10 +416,7 @@ export interface IModelRpc {
      * Retrieve the parameter definitions for a model.
      * @param modelId The model's id.
      */
-    getParameterDefinitions(
-        modelId: string,
-        snapshotId?: string
-    ): Promise<{
+    getParameterDefinitions(params: { modelId: string; snapshotId?: string }): Promise<{
         error?:
             | { code: 'model_not_found' | 'snapshot_not_found' }
             | {
@@ -477,12 +437,12 @@ export interface IModelRpc {
      * @param executionLocation Which launcher to use for running the session.
      * @returns The id of the created training session, used for further reference.
      */
-    train(
-        modelId: string,
-        newStateName: string,
-        params: ParameterProvider[],
+    train(params: {
+        modelId: string
+        newStateName: string
+        params: ParameterProvider[]
         executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code:
@@ -505,10 +465,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param trainingSessionId The training session's id.
      */
-    getTrainingStatus(
-        modelId: string,
-        trainingSessionId: string
-    ): Promise<{
+    getTrainingStatus(params: { modelId: string; trainingSessionId: string }): Promise<{
         error?: { code: 'model_not_found' | 'training_session_not_found' } | GenericError
         result?: {
             id: string
@@ -599,11 +556,7 @@ export interface IModelRpc {
      * @param trainingSessionId The training session's id as returned by train.
      * @param metrics Which metrics to fetch.
      */
-    getTrainingMetrics(
-        modelId: string,
-        trainingSessionId: string,
-        metrics: { name: string; startIndex: number; amount: number }[]
-    ): Promise<{
+    getTrainingMetrics(params: { modelId: string; trainingSessionId: string; metrics: { name: string; startIndex: number; amount: number }[] }): Promise<{
         error?: { code: 'model_not_found' | 'training_session_not_found' } | GenericError
         result?: {
             metrics: {
@@ -620,11 +573,7 @@ export interface IModelRpc {
      * @param trainingSessionId The training session's id as returned by train.
      * @param fromTimestamp If specified, only data points after this time is included.
      */
-    getTrainingSysinfo(
-        modelId: string,
-        trainingSessionId: string,
-        fromTimestamp?: number
-    ): Promise<{
+    getTrainingSysinfo(params: { modelId: string; trainingSessionId: string; fromTimestamp?: number }): Promise<{
         error?: { code: 'model_not_found' | 'training_session_not_found' } | GenericError
         result?: {
             sysinfo: { timestamp: number; cpus: number; memory: number; disk?: number }[]
@@ -636,10 +585,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param trainingSessionId The training session's id as returned by train.
      */
-    cancelTrainingSession(
-        modelId: string,
-        trainingSessionId: string
-    ): Promise<{
+    cancelTrainingSession(params: { modelId: string; trainingSessionId: string }): Promise<{
         error?: { code: 'model_not_found' | 'training_session_not_found' | 'training_session_not_running' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -649,10 +595,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param trainingSessionId The training session's id as returned by train.
      */
-    clearPreviousTrainingSession(
-        modelId: string,
-        trainingSessionId: string
-    ): Promise<{
+    clearPreviousTrainingSession(params: { modelId: string; trainingSessionId: string }): Promise<{
         error?: { code: 'model_not_found' | 'training_session_not_found' | 'training_session_running' | 'access_denied' } | GenericError
         result?: {}
     }>
@@ -663,11 +606,7 @@ export interface IModelRpc {
      * @param params Parameters to pass to the model.
      * @param snapshotId Optional. If provided, the snapshot with this id will be evaluated.
      */
-    evaluate(
-        modelId: string,
-        params: ParameterProvider[],
-        snapshotId?: string
-    ): Promise<{
+    evaluate(params: { modelId: string; params: ParameterProvider[]; snapshotId?: string }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'quota_exceeded'
@@ -696,7 +635,7 @@ export interface IModelRpc {
      * Get running and finished evaluations of a model.
      * @param modelId The model's id.
      */
-    getEvaluations(modelId: string): Promise<{
+    getEvaluations(params: { modelId: string }): Promise<{
         error?: { code: 'model_not_found' } | GenericError
         result?: {
             running: { id: string; startedAt: number }[]
@@ -711,10 +650,7 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param evaluationId The id of the evaluation.
      */
-    getFinishedEvaluationResult(
-        modelId: string,
-        evaluationId: string
-    ): Promise<{
+    getFinishedEvaluationResult(params: { modelId: string; evaluationId: string }): Promise<{
         error?: { code: 'model_not_found' | 'evaluation_not_found' } | GenericError
         result?: {
             evaluationFailed?: {
@@ -733,12 +669,9 @@ export interface IModelRpc {
     /**
      * Cancel an ongoing evaluation.
      * @param modelId The model's id.
-     * @param evalutionId The id of the evaluation.
+     * @param evaluationId The id of the evaluation.
      */
-    cancelEvaluation(
-        modelId: string,
-        evalutionId: string
-    ): Promise<{
+    cancelEvaluation(params: { modelId: string; evaluationId: string }): Promise<{
         error?: { code: 'model_not_found' | 'evaluation_not_found' } | GenericError
         result?: {}
     }>
@@ -748,10 +681,10 @@ export interface IModelRpc {
      * @param modelId The model's id.
      * @param persistentLaunchers A list of info for each persistent launcher.
      */
-    setUsedPersistentLaunchersForEvaluate(
-        modelId: string,
+    setUsedPersistentLaunchersForEvaluate(params: {
+        modelId: string
         persistentLaunchers: { persistentLauncherId: string; level: 'launcher' | 'session' | 'instantiatedModel' }[]
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code: 'persistent_launcher_not_found' | 'model_not_found' | 'invalid_executor_type' | 'snapshot_no_longer_exists' | 'access_denied'
@@ -764,7 +697,7 @@ export interface IModelRpc {
      * Retrieve which persistent launchers the model is configured to use.
      * @param modelId The model's id.
      */
-    getUsedPersistentLaunchersForEvaluate(modelId: string): Promise<{
+    getUsedPersistentLaunchersForEvaluate(params: { modelId: string }): Promise<{
         error?: { code: 'model_not_found' | 'invalid_executor_type' } | GenericError
         result?: {
             usedPersistentLaunchers: {

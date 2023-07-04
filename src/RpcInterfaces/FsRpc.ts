@@ -24,12 +24,7 @@ export interface IFsRpc {
      * ENOENT - The name does not exist within the directory.
      * ENOTDIR - The parent inode was not a directory.
      */
-    lookup(
-        modelId: string,
-        snapshotId: string | null,
-        parent: number,
-        name: string | Buffer
-    ): Promise<{
+    lookup(params: { modelId: string; snapshotId: string | null; parent: number; name: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'ENOENT' | 'ENOTDIR'
@@ -47,11 +42,7 @@ export interface IFsRpc {
      * Errors:
      * ESTALE - The inode does not exist.
      */
-    getattr(
-        modelId: string,
-        snapshotId: string | null,
-        inode: number
-    ): Promise<{
+    getattr(params: { modelId: string; snapshotId: string | null; inode: number }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE'
@@ -70,20 +61,20 @@ export interface IFsRpc {
      * EFBIG - The target size is too large.
      * EISDIR - Attempted to resize a directory.
      */
-    setattr(
-        modelId: string,
-        inode: number,
-        mode?: number,
-        size?: number,
+    setattr(params: {
+        modelId: string
+        inode: number
+        mode?: number
+        size?: number
         atime?: {
             sec: number
             nsec: number
-        },
+        }
         mtime?: {
             sec: number
             nsec: number
         }
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'EFBIG' | 'EISDIR'
@@ -103,13 +94,7 @@ export interface IFsRpc {
      * EEXIST - The name already exists within the directory.
      * ENOSPC - There is not enough space within the filesystem.
      */
-    mknod(
-        modelId: string,
-        parent: number,
-        name: string | Buffer,
-        mode: number,
-        dev: number
-    ): Promise<{
+    mknod(params: { modelId: string; parent: number; name: string | Buffer; mode: number; dev: number }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
@@ -129,13 +114,7 @@ export interface IFsRpc {
      * EISDIR - The inode was a directory.
      * EINVAL - The inode was not a file suitable for reading.
      */
-    read(
-        modelId: string,
-        snapshotId: string | null,
-        inode: number,
-        offset: number,
-        count: number
-    ): Promise<{
+    read(params: { modelId: string; snapshotId: string | null; inode: number; offset: number; count: number }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'EISDIR' | 'EINVAL'
@@ -156,13 +135,7 @@ export interface IFsRpc {
      * ENOSPC - Not enough space on the filesystem to perform the write.
      * EINVAL - The inode was not a file suitable for writing.
      */
-    write(
-        modelId: string,
-        inode: number,
-        data: Buffer,
-        offset: number,
-        truncate?: boolean
-    ): Promise<{
+    write(params: { modelId: string; inode: number; data: Buffer; offset: number; truncate?: boolean }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'EISDIR' | 'ENOSPC' | 'EINVAL'
@@ -182,12 +155,7 @@ export interface IFsRpc {
      * EEXIST - The name already exists within the directory.
      * ENOSPC - There is not enough space within the filesystem.
      */
-    symlink(
-        modelId: string,
-        parent: number,
-        name: string | Buffer,
-        link: string | Buffer
-    ): Promise<{
+    symlink(params: { modelId: string; parent: number; name: string | Buffer; link: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
@@ -206,11 +174,7 @@ export interface IFsRpc {
      * ESTALE - The inode does not exist.
      * EINVAL - The inode was not a symbolic link.
      */
-    readlink(
-        modelId: string,
-        snapshotId: string | null,
-        inode: number
-    ): Promise<{
+    readlink(params: { modelId: string; snapshotId: string | null; inode: number }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'EINVAL'
@@ -230,12 +194,7 @@ export interface IFsRpc {
      * EEXIST - The name already exists within the directory.
      * ENOSPC - There is not enough space within the filesystem.
      */
-    mkdir(
-        modelId: string,
-        parent: number,
-        name: string | Buffer,
-        mode: number
-    ): Promise<{
+    mkdir(params: { modelId: string; parent: number; name: string | Buffer; mode: number }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'
@@ -256,11 +215,7 @@ export interface IFsRpc {
      * ENOENT - The name does not exist within the directory.
      * EISDIR - The file pointed to by name is a directory.
      */
-    unlink(
-        modelId: string,
-        parent: number,
-        name: string | Buffer
-    ): Promise<{
+    unlink(params: { modelId: string; parent: number; name: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'EISDIR'
@@ -278,11 +233,7 @@ export interface IFsRpc {
      * ENOENT - The name does not exist within the directory.
      * ENOTEMPTY - The file pointed to by name is not an empty directory.
      */
-    rmdir(
-        modelId: string,
-        parent: number,
-        name: string | Buffer
-    ): Promise<{
+    rmdir(params: { modelId: string; parent: number; name: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT' | 'ENOTEMPTY'
@@ -302,14 +253,7 @@ export interface IFsRpc {
      * EISDIR - The target is a directory but the file to rename is not a directory.
      * ENOSPC - There is not enough space within the filesystem.
      */
-    rename(
-        modelId: string,
-        parent: number,
-        name: string | Buffer,
-        newparent: number,
-        newname: string | Buffer,
-        flags?: number
-    ): Promise<{
+    rename(params: { modelId: string; parent: number; name: string | Buffer; newparent: number; newname: string | Buffer; flags?: number }): Promise<{
         error?:
             | {
                   code:
@@ -338,12 +282,7 @@ export interface IFsRpc {
      * EEXIST - The name already exists within the directory.
      * ENOSPC - There is not enough space within the filesystem.
      */
-    link(
-        modelId: string,
-        inode: number,
-        newparent: number,
-        newname: string | Buffer
-    ): Promise<{
+    link(params: { modelId: string; inode: number; newparent: number; newname: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EPERM' | 'EEXIST' | 'ENOSPC'
@@ -361,11 +300,7 @@ export interface IFsRpc {
      * ESTALE - The inode does not exist.
      * ENOTDIR - The inode is not a directory.
      */
-    readdir(
-        modelId: string,
-        snapshotId: string | null,
-        inode: number
-    ): Promise<{
+    readdir(params: { modelId: string; snapshotId: string | null; inode: number }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'snapshot_not_found' | 'invalid_executor_type' | 'ESTALE' | 'ENOTDIR'
@@ -384,11 +319,7 @@ export interface IFsRpc {
      * ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
      * ENOENT - The name does not exist within the directory.
      */
-    rmdirAll(
-        modelId: string,
-        parent: number,
-        name: string | Buffer
-    ): Promise<{
+    rmdirAll(params: { modelId: string; parent: number; name: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'ENOENT'
@@ -406,12 +337,7 @@ export interface IFsRpc {
      * EEXIST - The name already exists within the directory.
      * ENOSPC - There is not enough space within the filesystem.
      */
-    copy(
-        modelId: string,
-        inode: number,
-        newparent: number,
-        newname: string | Buffer
-    ): Promise<{
+    copy(params: { modelId: string; inode: number; newparent: number; newname: string | Buffer }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'access_denied' | 'ESTALE' | 'ENOTDIR' | 'EEXIST' | 'ENOSPC'

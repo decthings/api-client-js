@@ -2,10 +2,6 @@
 
 ## Decthings API-client
 
-**Beta:** Decthings platform is in beta! We continue development and would really appreciate any feedback you might have. In the meantime, note that Decthings is not suitable for production use.
-
----
-
 [![npm version](https://badge.fury.io/js/@decthings%2Fapi-client.svg)](https://badge.fury.io/js/@decthings%2Fapi-client)
 
 [Decthings](https://decthings.com) is a cloud-based API for artificial intelligence and machine learning. This package is officially supported by Decthings.
@@ -21,7 +17,7 @@ Documentation for this package is available [here](https://decthings.com/docs/ap
 
 ---
 
-With Decthings, you can create models that run in the cloud. Then, use an API client to send input data and receive the output.
+With Decthings, you can create AI models that run in the cloud. Then, use an API client to send input data and receive the output.
 
 #### Example
 

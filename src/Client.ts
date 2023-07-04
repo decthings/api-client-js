@@ -46,6 +46,10 @@ export type DecthingsClientOptions = {
      * Optional API key. Some methods require this to be set.
      */
     apiKey?: string
+    /**
+     * Optional additional headers to include with each request.
+     */
+    extraHeaders?: [string, string][]
 }
 
 export declare interface DecthingsClient extends EventEmitter {
@@ -69,24 +73,25 @@ export declare interface DecthingsClient extends EventEmitter {
     emit(event: 'close'): boolean
     removeListener(event: 'close', handler: () => void): this
 
-    on(event: 'event', handler: (api: string, eventName: string, params: any[], data: Buffer[]) => void): this
-    emit(event: 'event', api: string, eventName: string, params: any[], data: Buffer[]): boolean
-    removeListener(event: 'event', handler: (api: string, eventName: string, params: any[], data: Buffer[]) => void): this
+    on(event: 'event', handler: (api: string, eventName: string, params: any, data: Buffer[]) => void): this
+    emit(event: 'event', api: string, eventName: string, params: any, data: Buffer[]): boolean
+    removeListener(event: 'event', handler: (api: string, eventName: string, params: any, data: Buffer[]) => void): this
 }
 
 export class DecthingsClient extends EventEmitter {
-    private static WebSocket: (address: string) => InstanceType<typeof import('ws')>
+    private static WebSocket: (address: string, extraHeaders?: [string, string][]) => InstanceType<typeof import('ws')>
     private static fetch: typeof fetch
 
     private _wsServerAddress: string
     private _httpServerAddress: string
+    private _extraHeaders: [string, string][]
 
     #_apiKey?: string
     private _closed = false
 
     private _ws: {
         keepAlive: Set<string>
-        call: (api: string, method: string, params: any[], data: Buffer[]) => Promise<{ response: Protocol.Response; data: Buffer[] }>
+        call: (api: string, method: string, params: any, data: Buffer[]) => Promise<{ response: Protocol.Response; data: Buffer[] }>
         dispose: () => void
         disposeIfUnused: () => void
     }
@@ -104,7 +109,7 @@ export class DecthingsClient extends EventEmitter {
                     return
                 }
 
-                const ws = DecthingsClient.WebSocket(this._wsServerAddress)
+                const ws = DecthingsClient.WebSocket(this._wsServerAddress, this._extraHeaders)
 
                 ws.addEventListener('message', (data) => {
                     if (disposed) {
@@ -263,6 +268,23 @@ export class DecthingsClient extends EventEmitter {
         if (typeof this._httpServerAddress !== 'string') {
             throw new Error('Invalid option: Expected httpServerAddress to be a string.')
         }
+        if (options.extraHeaders) {
+            if (!Array.isArray(options.extraHeaders)) {
+                throw new Error('Invalid option: Expected extraHeaders to be an array.')
+            }
+            for (const header of options.extraHeaders) {
+                if (!Array.isArray(header)) {
+                    throw new Error('Invalid option: Expected extraHeaders to be an array containing arrays.')
+                }
+                if (header.length !== 2) {
+                    throw new Error('Invalid option: Expected each header to be an array of length 2.')
+                }
+                if (header.some((el) => typeof el !== 'string')) {
+                    throw new Error(`Invalid option: Expected each header to be an array of strings, got ${header.find((el) => typeof el !== 'string')}`)
+                }
+            }
+            this._extraHeaders = options.extraHeaders
+        }
 
         const addKeepalive = (id: string) => {
             if (!this._ws) {
@@ -311,7 +333,7 @@ export class DecthingsClient extends EventEmitter {
     public async rawMethodCall(
         api: string,
         method: string,
-        params: any[],
+        params: any,
         data: Buffer[],
         mode: 'http' | 'ws' = 'http'
     ): Promise<{ error?: any; result?: any; data: Buffer[] }> {
@@ -333,6 +355,9 @@ export class DecthingsClient extends EventEmitter {
             const headers: [string, string][] = [['Content-Type', 'application/octet-stream']]
             if (this.#_apiKey) {
                 headers.push(['Authorization', `Bearer ${this.#_apiKey}`])
+            }
+            if (this._extraHeaders) {
+                headers.push(...this._extraHeaders)
             }
             const body = Protocol.serializeForHttp(params, data)
             const response = await DecthingsClient.fetch(`${this._httpServerAddress}/${api}/${method}`, {

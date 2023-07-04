@@ -22,37 +22,37 @@ export interface IDebugRpc extends EventEmitter {
     /**
      * Event emitted when a debug session exits.
      */
-    on(event: 'exit', handler: (debugSessionId: string, reason: DebugSessionTerminatedReason) => void): this
-    emit(event: 'exit', debugSessionId: string, reason: DebugSessionTerminatedReason): boolean
-    removeListener(event: 'exit', handler: (debugSessionId: string, reason: DebugSessionTerminatedReason) => void): this
+    on(event: 'exit', handler: (params: { debugSessionId: string; reason: DebugSessionTerminatedReason }) => void): this
+    emit(event: 'exit', params: { debugSessionId: string; reason: DebugSessionTerminatedReason }): boolean
+    removeListener(event: 'exit', handler: (params: { debugSessionId: string; reason: DebugSessionTerminatedReason }) => void): this
 
     /**
      * Event emitted when output for a debug session is received on standard output (for example console.error).
      */
-    on(event: 'stdout', handler: (debugSessionId: string, data: Buffer) => void): this
-    emit(event: 'stdout', debugSessionId: string, data: Buffer): boolean
-    removeListener(event: 'stdout', handler: (debugSessionId: string, data: Buffer) => void): this
+    on(event: 'stdout', handler: (params: { debugSessionId: string; data: Buffer }) => void): this
+    emit(event: 'stdout', params: { debugSessionId: string; data: Buffer }): boolean
+    removeListener(event: 'stdout', handler: (params: { debugSessionId: string; data: Buffer }) => void): this
 
     /**
      * Event emitted when output for a debug session is received on standard error (for example console.error).
      */
-    on(event: 'stderr', handler: (debugSessionId: string, data: Buffer) => void): this
-    emit(event: 'stderr', debugSessionId: string, data: Buffer): boolean
-    removeListener(event: 'stderr', handler: (debugSessionId: string, data: Buffer) => void): this
+    on(event: 'stderr', handler: (params: { debugSessionId: string; data: Buffer }) => void): this
+    emit(event: 'stderr', params: { debugSessionId: string; data: Buffer }): boolean
+    removeListener(event: 'stderr', handler: (params: { debugSessionId: string; data: Buffer }) => void): this
 
     /**
      * Event emitted when a debug session has been initialized, which means it's ready to execute functions.
      */
-    on(event: 'initialized', handler: (debugSessionId: string) => void): this
-    emit(event: 'initialized', debugSessionId: string): boolean
-    removeListener(event: 'initialized', handler: (debugSessionId: string) => void): this
+    on(event: 'initialized', handler: (params: { debugSessionId: string }) => void): this
+    emit(event: 'initialized', params: { debugSessionId: string }): boolean
+    removeListener(event: 'initialized', handler: (params: { debugSessionId: string }) => void): this
 
     /**
      * Event emitted when output from the remove inspector is received.
      */
-    on(event: 'remoteInspectorData', handler: (debugSessionId: string, msg: string) => void): this
-    emit(event: 'remoteInspectorData', debugSessionId: string, msg: string): boolean
-    removeListener(event: 'remoteInspectorData', handler: (debugSessionId: string, msg: string) => void): this
+    on(event: 'remoteInspectorData', handler: (params: { debugSessionId: string; data: Buffer }) => void): this
+    emit(event: 'remoteInspectorData', params: { debugSessionId: string; data: Buffer }): boolean
+    removeListener(event: 'remoteInspectorData', handler: (params: { debugSessionId: string; data: Buffer }) => void): this
 
     /**
      * Start a debug session where a model can be tested.
@@ -63,12 +63,12 @@ export interface IDebugRpc extends EventEmitter {
      * remoteInspector: Whether to run the process in remote debugger mode, allowing you to place breakpoints and step through the code. Default: true.
      * @param subscribeToEvents If true and connection is WebSocket, immediately subscribes you to events "exit", "stdout", "stderr", "initialized" and "remoteInspectorData" for the debug session. Default: true.
      */
-    launchDebugSession(
-        modelId: string,
-        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec },
-        options?: { terminateAfterInactiveSeconds?: number; remoteInspector?: boolean },
+    launchDebugSession(params: {
+        modelId: string
+        executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }
+        options?: { terminateAfterInactiveSeconds?: number; remoteInspector?: boolean }
         subscribeToEvents?: boolean
-    ): Promise<{
+    }): Promise<{
         error?:
             | {
                   code: 'model_not_found' | 'invalid_executor_type' | 'persistent_launcher_not_found' | 'quota_exceeded' | 'server_overloaded'
@@ -83,7 +83,7 @@ export interface IDebugRpc extends EventEmitter {
      * Retrieve information about running debug sessions. If the requested session wasn't returned, it means it doesn't exist (or you don't have access to it).
      * @param debugSessionIds Which sessions to fetch. If unspecified, all running sessions will be fetched.
      */
-    getDebugSessions(debugSessionIds?: string[]): Promise<{
+    getDebugSessions(params: { debugSessionIds?: string[] }): Promise<{
         error?: GenericError
         result?: {
             debugSessions: {
@@ -110,7 +110,7 @@ export interface IDebugRpc extends EventEmitter {
      * Terminate a running debug session.
      * @param debugSessionId The debug session's id.
      */
-    terminateDebugSession(debugSessionId: string): Promise<{
+    terminateDebugSession(params: { debugSessionId: string }): Promise<{
         error?: { code: 'debug_session_not_found' } | GenericError
         result?: {}
     }>
@@ -120,10 +120,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param debugSessionId The debug session's id.
      * @param params Parameters to pass to the executor.
      */
-    callCreateModelState(
-        debugSessionId: string,
-        params: ParameterProvider[]
-    ): Promise<{
+    callCreateModelState(params: { debugSessionId: string; params: ParameterProvider[] }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found' | 'debug_session_terminated'
@@ -146,10 +143,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param debugSessionId The debug session's id.
      * @param stateData Data to use as model state.
      */
-    callInstantiateModel(
-        debugSessionId: string,
-        stateData: { type: 'data'; data: Buffer[] } | { type: 'dataId'; dataId: string }
-    ): Promise<{
+    callInstantiateModel(params: { debugSessionId: string; stateData: { type: 'data'; data: Buffer[] } | { type: 'dataId'; dataId: string } }): Promise<{
         error?:
             | { code: 'debug_session_not_found' | 'debug_session_terminated' | 'state_data_not_found' }
             | { code: 'exception'; exceptionDetails?: string }
@@ -166,11 +160,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param params Parameters to pass to the executor.
      * @returns An ID for the training session, allowing you to check the progress using getTrainingStatus()
      */
-    callTrain(
-        debugSessionId: string,
-        instantiatedModelId: string,
-        params: ParameterProvider[]
-    ): Promise<{
+    callTrain(params: { debugSessionId: string; instantiatedModelId: string; params: ParameterProvider[] }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found' | 'instantiated_model_not_found' | 'debug_session_terminated'
@@ -188,10 +178,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param debugSessionId The debug session's id.
      * @param trainingSessionId The id of the training session, as returned by the "callTrain" function.
      */
-    getTrainingStatus(
-        debugSessionId: string,
-        trainingSessionId: string
-    ): Promise<{
+    getTrainingStatus(params: { debugSessionId: string; trainingSessionId: string }): Promise<{
         error?: { code: 'debug_session_not_found' | 'training_session_not_found' } | GenericError
         result?: {
             id: string
@@ -229,11 +216,11 @@ export interface IDebugRpc extends EventEmitter {
      * @param trainingSessionId The id of the training session, as returned by the "callTrain" function.
      * @param metrics Which metrics to fetch.
      */
-    getTrainingMetrics(
-        debugSessionId: string,
-        trainingSessionId: string,
+    getTrainingMetrics(params: {
+        debugSessionId: string
+        trainingSessionId: string
         metrics: { name: string; startIndex: number; amount: number }[]
-    ): Promise<{
+    }): Promise<{
         error?: { code: 'debug_session_not_found' | 'training_session_not_found' } | GenericError
         result?: {
             metrics: {
@@ -249,10 +236,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param debugSessionId The debug session's id.
      * @param trainingSessionId The id of the training session, as returned by the "callTrain" function.
      */
-    cancelTrainingSession(
-        debugSessionId: string,
-        trainingSessionId: string
-    ): Promise<{
+    cancelTrainingSession(params: { debugSessionId: string; trainingSessionId: string }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found' | 'training_session_not_found' | 'training_session_not_running'
@@ -267,11 +251,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param params Input parameters.
      * @param instantiatedModelId The id of the instantiated model, as returned by the instantiateModel function.
      */
-    callEvaluate(
-        debugSessionId: string,
-        instantiatedModelId: string,
-        params: ParameterProvider[]
-    ): Promise<{
+    callEvaluate(params: { debugSessionId: string; instantiatedModelId: string; params: ParameterProvider[] }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found' | 'instantiated_model_not_found' | 'debug_session_terminated'
@@ -289,10 +269,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param debugSessionId The debug session's id.
      * @param instantiatedModelId The id of the instantiated model, as returned by the "instantiateModel" function.
      */
-    callGetModelState(
-        debugSessionId: string,
-        instantiatedModelId: string
-    ): Promise<{
+    callGetModelState(params: { debugSessionId: string; instantiatedModelId: string }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found' | 'instantiated_model_not_found' | 'debug_session_terminated'
@@ -312,11 +289,7 @@ export interface IDebugRpc extends EventEmitter {
      * @param dataId The data's id, as returned by "callCreateModelState" or "callGetModelState".
      * @param segments Which segments to fetch. Defaults to the first one ([0]).
      */
-    downloadStateData(
-        debugSessionId: string,
-        dataId: string,
-        segments?: number[]
-    ): Promise<{
+    downloadStateData(params: { debugSessionId: string; dataId: string; segments?: number[] }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found' | 'state_data_not_found' | 'segment_out_of_range'
@@ -330,10 +303,7 @@ export interface IDebugRpc extends EventEmitter {
     /**
      * Send a message to the remote inspector.
      */
-    sendToRemoteInspector(
-        debugSessionId: string,
-        message: string
-    ): Promise<{
+    sendToRemoteInspector(params: { debugSessionId: string; data: string | Buffer }): Promise<{
         error?: { code: 'debug_session_not_found' | 'not_remote_inspector' } | GenericError
         result?: {}
     }>
@@ -344,7 +314,7 @@ export interface IDebugRpc extends EventEmitter {
      * Subscriptions are based on the WebSocket connection. If you reconnect with a new WebSocket, you must call this again.
      * @param debugSessionId The debug session's id.
      */
-    subscribeToEvents(debugSessionId: string): Promise<{
+    subscribeToEvents(params: { debugSessionId: string }): Promise<{
         error?:
             | {
                   code: 'debug_session_not_found'
@@ -357,7 +327,7 @@ export interface IDebugRpc extends EventEmitter {
      * Remove the subscription.
      * @param debugSessionId The debug session's id.
      */
-    unsubscribeFromEvents(debugSessionId: string): Promise<{
+    unsubscribeFromEvents(params: { debugSessionId: string }): Promise<{
         error?: { code: 'not_subscribed' | 'too_many_requests' | 'unknown' } | { code: 'invalid_parameter'; parameterName: string; reason: string }
         result?: {}
     }>

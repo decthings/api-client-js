@@ -7,10 +7,7 @@ export interface IPersistentLauncherRpc {
      * @param name A name for the launcher.
      * @returns The id of the created persistent launcher.
      */
-    createPersistentLauncher(
-        name: string,
-        spec: LauncherSpec
-    ): Promise<{
+    createPersistentLauncher(params: { name: string; spec: LauncherSpec }): Promise<{
         error?: { code: 'quota_exceeded' } | GenericError
         result?: {
             persistentLauncherId: string
@@ -22,7 +19,7 @@ export interface IPersistentLauncherRpc {
      * launcher doesn't exist (or you don't have access to it).
      * @param persistentLauncherIds Which launchers to fetch. If unspecified, all launchers will be fetched.
      */
-    getPersistentLaunchers(persistentLauncherIds?: string[]): Promise<{
+    getPersistentLaunchers(params: { persistentLauncherIds?: string[] }): Promise<{
         error?: GenericError
         result?: {
             persistentLaunchers: {
@@ -41,10 +38,7 @@ export interface IPersistentLauncherRpc {
      * @param persistentLauncherId The persistent launcher's id.
      * @param fromTimestamp If specified, only data points after this time is included.
      */
-    getSysinfo(
-        persistentLauncherId: string,
-        fromTimestamp?: number
-    ): Promise<{
+    getSysinfo(params: { persistentLauncherId: string; fromTimestamp?: number }): Promise<{
         error?: { code: 'persistent_launcher_not_found' } | GenericError
         result?: {
             sysinfo: { timestamp: number; cpus: number; memory: number; disk?: number }[]
@@ -56,7 +50,7 @@ export interface IPersistentLauncherRpc {
      * case, the launcher state will be set to "{ type: 'deleting' }".
      * @param persistentLauncherId The persistent launcher's id.
      */
-    deletePersistentLauncher(persistentLauncherId: string): Promise<{
+    deletePersistentLauncher(params: { persistentLauncherId: string }): Promise<{
         error?: { code: 'persistent_launcher_not_found' | 'persistent_launcher_being_deleted' } | GenericError
         result?: {}
     }>
