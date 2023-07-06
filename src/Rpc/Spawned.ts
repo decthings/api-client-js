@@ -13,7 +13,7 @@ export type SpawnedCommandTerminatedReason =
           oom: boolean
       }
 
-export interface ISpawnedRpc extends EventEmitter {
+export interface SpawnedRpc extends EventEmitter {
     /**
      * Event emitted when output for a spawned command is received on standard output.
      */

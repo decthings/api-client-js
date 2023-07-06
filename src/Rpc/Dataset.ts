@@ -2,7 +2,7 @@ import { Data, DataElement, DataRules } from '../DataTypes'
 import { Dataset } from '../types'
 import { GenericError } from './Error'
 
-export interface IDatasetRpc {
+export interface DatasetRpc {
     /**
      * Create a new dataset.
      * @param name The dataset's name.

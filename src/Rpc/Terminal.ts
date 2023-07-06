@@ -13,7 +13,7 @@ export type TerminalSessionTerminatedReason =
           oom: boolean
       }
 
-export interface ITerminalRpc extends EventEmitter {
+export interface TerminalRpc extends EventEmitter {
     /**
      * Event emitted when output is received from a terminal.
      */

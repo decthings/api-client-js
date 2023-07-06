@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 import { Buffer } from 'buffer'
-import { IDatasetRpc, IDebugRpc, IFsRpc, ILanguageRpc, IModelRpc, IPersistentLauncherRpc, ISpawnedRpc, ITeamRpc, ITerminalRpc, IUserRpc } from './RpcInterfaces'
+import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './Rpc'
 import { Data, DataElement, Parameter, ParameterProvider } from './DataTypes'
 import { DecthingsClient } from './Client'
 
@@ -42,13 +42,13 @@ function passthroughCall(client: DecthingsClient, api: string, method: string) {
     }
 }
 
-export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
+export function makeDatasetRpc(client: DecthingsClient): DatasetRpc {
     return {
         createDataset: passthroughCall(client, 'Dataset', 'createDataset'),
         updateDataset: passthroughCall(client, 'Dataset', 'updateDataset'),
         deleteDataset: passthroughCall(client, 'Dataset', 'deleteDataset'),
         getDatasets: passthroughCall(client, 'Dataset', 'getDatasets'),
-        addEntries: async (params: Parameters<IDatasetRpc['addEntries']>[0]) => {
+        addEntries: async (params: Parameters<DatasetRpc['addEntries']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -75,7 +75,7 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
             }
             return { result: res.result }
         },
-        addEntriesToNeedsReview: async (params: Parameters<IDatasetRpc['addEntriesToNeedsReview']>[0]) => {
+        addEntriesToNeedsReview: async (params: Parameters<DatasetRpc['addEntriesToNeedsReview']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -102,7 +102,7 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
             }
             return { result: res.result }
         },
-        finalizeNeedsReviewEntries: async (params: Parameters<IDatasetRpc['finalizeNeedsReviewEntries']>[0]) => {
+        finalizeNeedsReviewEntries: async (params: Parameters<DatasetRpc['finalizeNeedsReviewEntries']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -135,7 +135,7 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
             }
             return { result: res.result }
         },
-        getEntries: async (params: Parameters<IDatasetRpc['getEntries']>[0]) => {
+        getEntries: async (params: Parameters<DatasetRpc['getEntries']>[0]) => {
             const res = await client.rawMethodCall('Dataset', 'getEntries', params, [])
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -155,7 +155,7 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
                 }
             }
         },
-        getNeedsReviewEntries: async (params: Parameters<IDatasetRpc['getNeedsReviewEntries']>[0]) => {
+        getNeedsReviewEntries: async (params: Parameters<DatasetRpc['getNeedsReviewEntries']>[0]) => {
             const res = await client.rawMethodCall('Dataset', 'getNeedsReviewEntries', params, [])
             if (res.data.length === 0 || !res.result) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -180,7 +180,7 @@ export function makeDatasetRpc(client: DecthingsClient): IDatasetRpc {
     }
 }
 
-class DebugRpc extends EventEmitter implements IDebugRpc {
+class DebugRpcImpl extends EventEmitter implements DebugRpc {
     #internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
@@ -194,7 +194,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             removeKeepalive
         }
     }
-    async launchDebugSession(params: Parameters<IDebugRpc['launchDebugSession']>[0]) {
+    async launchDebugSession(params: Parameters<DebugRpc['launchDebugSession']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -205,21 +205,21 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         }
         return res.result ? { result: res.result } : { error: res.error }
     }
-    async getDebugSessions(params: Parameters<IDebugRpc['getDebugSessions']>[0]) {
+    async getDebugSessions(params: Parameters<DebugRpc['getDebugSessions']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'getDebugSessions', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async terminateDebugSession(params: Parameters<IDebugRpc['terminateDebugSession']>[0]) {
+    async terminateDebugSession(params: Parameters<DebugRpc['terminateDebugSession']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'terminateDebugSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async callCreateModelState(params: Parameters<IDebugRpc['callCreateModelState']>[0]) {
+    async callCreateModelState(params: Parameters<DebugRpc['callCreateModelState']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -232,7 +232,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         }
         return { result: res.result }
     }
-    async callInstantiateModel(params: Parameters<IDebugRpc['callInstantiateModel']>[0]) {
+    async callInstantiateModel(params: Parameters<DebugRpc['callInstantiateModel']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -258,7 +258,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         }
         return { result: res.result }
     }
-    async callTrain(params: Parameters<IDebugRpc['callTrain']>[0]) {
+    async callTrain(params: Parameters<DebugRpc['callTrain']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -271,14 +271,14 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         }
         return { result: res.result }
     }
-    async getTrainingStatus(params: Parameters<IDebugRpc['getTrainingStatus']>[0]) {
+    async getTrainingStatus(params: Parameters<DebugRpc['getTrainingStatus']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingStatus', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getTrainingMetrics(params: Parameters<IDebugRpc['getTrainingMetrics']>[0]) {
+    async getTrainingMetrics(params: Parameters<DebugRpc['getTrainingMetrics']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingMetrics', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
@@ -303,14 +303,14 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             }
         }
     }
-    async cancelTrainingSession(params: Parameters<IDebugRpc['cancelTrainingSession']>[0]) {
+    async cancelTrainingSession(params: Parameters<DebugRpc['cancelTrainingSession']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'cancelTrainingSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async callEvaluate(params: Parameters<IDebugRpc['callEvaluate']>[0]) {
+    async callEvaluate(params: Parameters<DebugRpc['callEvaluate']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -337,14 +337,14 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             }
         }
     }
-    async callGetModelState(params: Parameters<IDebugRpc['callGetModelState']>[0]) {
+    async callGetModelState(params: Parameters<DebugRpc['callGetModelState']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'callGetModelState', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async downloadStateData(params: Parameters<IDebugRpc['downloadStateData']>[0]) {
+    async downloadStateData(params: Parameters<DebugRpc['downloadStateData']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Debug', 'downloadStateData', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
@@ -356,7 +356,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
             }
         }
     }
-    async sendToRemoteInspector(params: Parameters<IDebugRpc['sendToRemoteInspector']>[0]) {
+    async sendToRemoteInspector(params: Parameters<DebugRpc['sendToRemoteInspector']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -377,7 +377,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         }
         return { result: res.result }
     }
-    async subscribeToEvents(params: Parameters<IDebugRpc['subscribeToEvents']>[0]) {
+    async subscribeToEvents(params: Parameters<DebugRpc['subscribeToEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -388,7 +388,7 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
         this.#internal.addKeepalive(params.debugSessionId)
         return { result: res.result }
     }
-    async unsubscribeFromEvents(params: Parameters<IDebugRpc['unsubscribeFromEvents']>[0]) {
+    async unsubscribeFromEvents(params: Parameters<DebugRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -404,8 +404,8 @@ class DebugRpc extends EventEmitter implements IDebugRpc {
     }
 }
 
-export function makeDebugRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): IDebugRpc {
-    const rpc = new DebugRpc(client, addKeepalive, removeKeepalive)
+export function makeDebugRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): DebugRpc {
+    const rpc = new DebugRpcImpl(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Debug') {
             if (eventName === 'stdout' || eventName === 'stderr' || eventName == 'remoteInspectorData') {
@@ -422,9 +422,9 @@ export function makeDebugRpc(client: DecthingsClient, addKeepalive: (id: string)
     return rpc
 }
 
-export function makeFsRpc(client: DecthingsClient): IFsRpc {
+export function makeFsRpc(client: DecthingsClient): FsRpc {
     return {
-        lookup: async (params: Parameters<IFsRpc['lookup']>[0]) => {
+        lookup: async (params: Parameters<FsRpc['lookup']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -445,7 +445,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
         },
         setattr: passthroughCall(client, 'FS', 'setattr'),
         getattr: passthroughCall(client, 'FS', 'getattr'),
-        mknod: async (params: Parameters<IFsRpc['mknod']>[0]) => {
+        mknod: async (params: Parameters<FsRpc['mknod']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -464,7 +464,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        read: async (params: Parameters<IFsRpc['read']>[0]) => {
+        read: async (params: Parameters<FsRpc['read']>[0]) => {
             const res = await client.rawMethodCall('FS', 'read', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -476,7 +476,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
                 }
             }
         },
-        write: async (params: Parameters<IFsRpc['write']>[0]) => {
+        write: async (params: Parameters<FsRpc['write']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -491,7 +491,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        symlink: async (params: Parameters<IFsRpc['symlink']>[0]) => {
+        symlink: async (params: Parameters<FsRpc['symlink']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -518,7 +518,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        readlink: async (params: Parameters<IFsRpc['readlink']>[0]) => {
+        readlink: async (params: Parameters<FsRpc['readlink']>[0]) => {
             const res = await client.rawMethodCall('FS', 'readlink', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -530,7 +530,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
                 }
             }
         },
-        mkdir: async (params: Parameters<IFsRpc['mkdir']>[0]) => {
+        mkdir: async (params: Parameters<FsRpc['mkdir']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -549,7 +549,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        unlink: async (params: Parameters<IFsRpc['unlink']>[0]) => {
+        unlink: async (params: Parameters<FsRpc['unlink']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -568,7 +568,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        rmdir: async (params: Parameters<IFsRpc['rmdir']>[0]) => {
+        rmdir: async (params: Parameters<FsRpc['rmdir']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -587,7 +587,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        rename: async (params: Parameters<IFsRpc['rename']>[0]) => {
+        rename: async (params: Parameters<FsRpc['rename']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -614,7 +614,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        link: async (params: Parameters<IFsRpc['link']>[0]) => {
+        link: async (params: Parameters<FsRpc['link']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -633,7 +633,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        readdir: async (params: Parameters<IFsRpc['readdir']>[0]) => {
+        readdir: async (params: Parameters<FsRpc['readdir']>[0]) => {
             const res = await client.rawMethodCall('FS', 'readdir', params, [])
             if (res.error) {
                 return { error: res.error }
@@ -649,7 +649,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
                 }
             }
         },
-        rmdirAll: async (params: Parameters<IFsRpc['rmdirAll']>[0]) => {
+        rmdirAll: async (params: Parameters<FsRpc['rmdirAll']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -668,7 +668,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
             }
             return { result: res.result }
         },
-        copy: async (params: Parameters<IFsRpc['copy']>[0]) => {
+        copy: async (params: Parameters<FsRpc['copy']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -690,7 +690,7 @@ export function makeFsRpc(client: DecthingsClient): IFsRpc {
     }
 }
 
-class LanguageRpc extends EventEmitter implements ILanguageRpc {
+class LanguageRpcImpl extends EventEmitter implements LanguageRpc {
     #internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
@@ -704,7 +704,7 @@ class LanguageRpc extends EventEmitter implements ILanguageRpc {
             removeKeepalive
         }
     }
-    async startLanguageServer(params: Parameters<ILanguageRpc['startLanguageServer']>[0]) {
+    async startLanguageServer(params: Parameters<LanguageRpc['startLanguageServer']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Language', 'startLanguageServer', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
@@ -712,7 +712,7 @@ class LanguageRpc extends EventEmitter implements ILanguageRpc {
         this.#internal.addKeepalive(res.result.languageServerId)
         return { result: res.result }
     }
-    async writeToLanguageServer(params: Parameters<ILanguageRpc['writeToLanguageServer']>[0]) {
+    async writeToLanguageServer(params: Parameters<LanguageRpc['writeToLanguageServer']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -727,7 +727,7 @@ class LanguageRpc extends EventEmitter implements ILanguageRpc {
         }
         return { result: res.result }
     }
-    async unsubscribeFromEvents(params: Parameters<ILanguageRpc['unsubscribeFromEvents']>[0]) {
+    async unsubscribeFromEvents(params: Parameters<LanguageRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -743,8 +743,8 @@ class LanguageRpc extends EventEmitter implements ILanguageRpc {
     }
 }
 
-export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): ILanguageRpc {
-    const rpc = new LanguageRpc(client, addKeepalive, removeKeepalive)
+export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): LanguageRpc {
+    const rpc = new LanguageRpcImpl(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Language') {
             if (eventName === 'data') {
@@ -761,9 +761,9 @@ export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: stri
     return rpc
 }
 
-export function makeModelRpc(client: DecthingsClient): IModelRpc {
+export function makeModelRpc(client: DecthingsClient): ModelRpc {
     return {
-        createModel: async (params: Parameters<IModelRpc['createModel']>[0]) => {
+        createModel: async (params: Parameters<ModelRpc['createModel']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -824,7 +824,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
         updateModel: passthroughCall(client, 'Model', 'updateModel'),
         getModels: passthroughCall(client, 'Model', 'getModels'),
         setFilesystemSize: passthroughCall(client, 'Model', 'setFilesystemSize'),
-        createState: async (params: Parameters<IModelRpc['createState']>[0]) => {
+        createState: async (params: Parameters<ModelRpc['createState']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -837,7 +837,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
             }
             return { result: res.result }
         },
-        uploadState: async (params: Parameters<IModelRpc['uploadState']>[0]) => {
+        uploadState: async (params: Parameters<ModelRpc['uploadState']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -858,7 +858,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
         updateModelState: passthroughCall(client, 'Model', 'updateModelState'),
         setCurrentModelState: passthroughCall(client, 'Model', 'setCurrentModelState'),
         deleteModelState: passthroughCall(client, 'Model', 'deleteModelState'),
-        getModelState: async (params: Parameters<IModelRpc['getModelState']>[0]) => {
+        getModelState: async (params: Parameters<ModelRpc['getModelState']>[0]) => {
             const res = await client.rawMethodCall('Model', 'getModelState', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -870,7 +870,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
                 }
             }
         },
-        getSnapshotState: async (params: Parameters<IModelRpc['getSnapshotState']>[0]) => {
+        getSnapshotState: async (params: Parameters<ModelRpc['getSnapshotState']>[0]) => {
             const res = await client.rawMethodCall('Model', 'getSnapshotState', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -883,7 +883,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
             }
         },
         getParameterDefinitions: passthroughCall(client, 'Model', 'getParameterDefinitions'),
-        train: async (params: Parameters<IModelRpc['train']>[0]) => {
+        train: async (params: Parameters<ModelRpc['train']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -897,7 +897,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
             return { result: res.result }
         },
         getTrainingStatus: passthroughCall(client, 'Model', 'getTrainingStatus'),
-        getTrainingMetrics: async (params: Parameters<IModelRpc['getTrainingMetrics']>[0]) => {
+        getTrainingMetrics: async (params: Parameters<ModelRpc['getTrainingMetrics']>[0]) => {
             const res = await client.rawMethodCall('Model', 'getTrainingMetrics', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -925,7 +925,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
         getTrainingSysinfo: passthroughCall(client, 'Model', 'getTrainingSysinfo'),
         cancelTrainingSession: passthroughCall(client, 'Model', 'cancelTrainingSession'),
         clearPreviousTrainingSession: passthroughCall(client, 'Model', 'clearPreviousTrainingSession'),
-        evaluate: async (params: Parameters<IModelRpc['evaluate']>[0]) => {
+        evaluate: async (params: Parameters<ModelRpc['evaluate']>[0]) => {
             if (!params || typeof params !== 'object') {
                 throw new Error('Invalid parameters: Expected an object.')
             }
@@ -956,7 +956,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
             }
         },
         getEvaluations: passthroughCall(client, 'Model', 'getEvaluations'),
-        getFinishedEvaluationResult: async (params: Parameters<IModelRpc['getFinishedEvaluationResult']>[0]) => {
+        getFinishedEvaluationResult: async (params: Parameters<ModelRpc['getFinishedEvaluationResult']>[0]) => {
             const res = await client.rawMethodCall('Model', 'getFinishedEvaluationResult', params, [])
             if (res.data.length === 0 || res.error || !res.result.evaluationSuccess) {
                 return res.result ? { result: res.result } : { error: res.error }
@@ -986,7 +986,7 @@ export function makeModelRpc(client: DecthingsClient): IModelRpc {
     }
 }
 
-export function makePersistentLauncherRpc(client: DecthingsClient): IPersistentLauncherRpc {
+export function makePersistentLauncherRpc(client: DecthingsClient): PersistentLauncherRpc {
     return {
         createPersistentLauncher: passthroughCall(client, 'PersistentLauncher', 'createPersistentLauncher'),
         getPersistentLaunchers: passthroughCall(client, 'PersistentLauncher', 'getPersistentLaunchers'),
@@ -995,7 +995,7 @@ export function makePersistentLauncherRpc(client: DecthingsClient): IPersistentL
     }
 }
 
-class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
+class SpawnedRpcImpl extends EventEmitter implements SpawnedRpc {
     #internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
@@ -1009,7 +1009,7 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
             removeKeepalive
         }
     }
-    async spawnCommand(params: Parameters<ISpawnedRpc['spawnCommand']>[0]) {
+    async spawnCommand(params: Parameters<SpawnedRpc['spawnCommand']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1023,7 +1023,7 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         }
         return { result: res.result }
     }
-    async spawnCommandForModel(params: Parameters<ISpawnedRpc['spawnCommandForModel']>[0]) {
+    async spawnCommandForModel(params: Parameters<SpawnedRpc['spawnCommandForModel']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1037,21 +1037,21 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         }
         return { result: res.result }
     }
-    async terminateSpawnedCommand(params: Parameters<ISpawnedRpc['terminateSpawnedCommand']>[0]) {
+    async terminateSpawnedCommand(params: Parameters<SpawnedRpc['terminateSpawnedCommand']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Spawned', 'terminateSpawnedCommand', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getSpawnedCommands(params: Parameters<ISpawnedRpc['getSpawnedCommands']>[0]) {
+    async getSpawnedCommands(params: Parameters<SpawnedRpc['getSpawnedCommands']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Spawned', 'getSpawnedCommands', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async writeToSpawnedCommand(params: Parameters<ISpawnedRpc['writeToSpawnedCommand']>[0]) {
+    async writeToSpawnedCommand(params: Parameters<SpawnedRpc['writeToSpawnedCommand']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1072,7 +1072,7 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         }
         return { result: res.result }
     }
-    async subscribeToEvents(params: Parameters<ISpawnedRpc['subscribeToEvents']>[0]) {
+    async subscribeToEvents(params: Parameters<SpawnedRpc['subscribeToEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1083,7 +1083,7 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
         this.#internal.addKeepalive(params.spawnedCommandId)
         return { result: res.result }
     }
-    async unsubscribeFromEvents(params: Parameters<ISpawnedRpc['unsubscribeFromEvents']>[0]) {
+    async unsubscribeFromEvents(params: Parameters<SpawnedRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1099,8 +1099,8 @@ class SpawnedRpc extends EventEmitter implements ISpawnedRpc {
     }
 }
 
-export function makeSpawnedRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): ISpawnedRpc {
-    const rpc = new SpawnedRpc(client, addKeepalive, removeKeepalive)
+export function makeSpawnedRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): SpawnedRpc {
+    const rpc = new SpawnedRpcImpl(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Spawned') {
             if (eventName === 'stdout' || eventName === 'stderr') {
@@ -1117,7 +1117,7 @@ export function makeSpawnedRpc(client: DecthingsClient, addKeepalive: (id: strin
     return rpc
 }
 
-export function makeTeamRpc(client: DecthingsClient): ITeamRpc {
+export function makeTeamRpc(client: DecthingsClient): TeamRpc {
     return {
         createTeam: passthroughCall(client, 'Team', 'createTeam'),
         updateTeam: passthroughCall(client, 'Team', 'updateTeam'),
@@ -1135,7 +1135,7 @@ export function makeTeamRpc(client: DecthingsClient): ITeamRpc {
     }
 }
 
-class TerminalRpc extends EventEmitter implements ITerminalRpc {
+class TerminalRpcImpl extends EventEmitter implements TerminalRpc {
     #internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
@@ -1149,7 +1149,7 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
             removeKeepalive
         }
     }
-    async launchTerminalSession(params: Parameters<ITerminalRpc['launchTerminalSession']>[0]) {
+    async launchTerminalSession(params: Parameters<TerminalRpc['launchTerminalSession']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1163,21 +1163,21 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
         }
         return { result: res.result }
     }
-    async terminateTerminalSession(params: Parameters<ITerminalRpc['terminateTerminalSession']>[0]) {
+    async terminateTerminalSession(params: Parameters<TerminalRpc['terminateTerminalSession']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Terminal', 'terminateTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async getTerminalSessions(params: Parameters<ITerminalRpc['getTerminalSessions']>[0]) {
+    async getTerminalSessions(params: Parameters<TerminalRpc['getTerminalSessions']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Terminal', 'getTerminalSessions', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async writeToTerminalSession(params: Parameters<ITerminalRpc['writeToTerminalSession']>[0]) {
+    async writeToTerminalSession(params: Parameters<TerminalRpc['writeToTerminalSession']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1198,21 +1198,21 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
         }
         return { result: res.result }
     }
-    async resizeTerminalSession(params: Parameters<ITerminalRpc['resizeTerminalSession']>[0]) {
+    async resizeTerminalSession(params: Parameters<TerminalRpc['resizeTerminalSession']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Terminal', 'resizeTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async addFilesystemAccessForTerminalSession(params: Parameters<ITerminalRpc['addFilesystemAccessForTerminalSession']>[0]) {
+    async addFilesystemAccessForTerminalSession(params: Parameters<TerminalRpc['addFilesystemAccessForTerminalSession']>[0]) {
         const res = await this.#internal.client.rawMethodCall('Terminal', 'addFilesystemAccessForTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async subscribeToEvents(params: Parameters<ITerminalRpc['subscribeToEvents']>[0]) {
+    async subscribeToEvents(params: Parameters<TerminalRpc['subscribeToEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1223,7 +1223,7 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
         this.#internal.addKeepalive(params.terminalSessionId)
         return { result: res.result }
     }
-    async unsubscribeFromEvents(params: Parameters<ITerminalRpc['unsubscribeFromEvents']>[0]) {
+    async unsubscribeFromEvents(params: Parameters<TerminalRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
@@ -1239,8 +1239,8 @@ class TerminalRpc extends EventEmitter implements ITerminalRpc {
     }
 }
 
-export function makeTerminalRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): ITerminalRpc {
-    const rpc = new TerminalRpc(client, addKeepalive, removeKeepalive)
+export function makeTerminalRpc(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void): TerminalRpc {
+    const rpc = new TerminalRpcImpl(client, addKeepalive, removeKeepalive)
     client.on('event', (api, eventName, params, data) => {
         if (api === 'Terminal') {
             if (eventName === 'data') {
@@ -1257,7 +1257,7 @@ export function makeTerminalRpc(client: DecthingsClient, addKeepalive: (id: stri
     return rpc
 }
 
-export function makeUserRpc(client: DecthingsClient): IUserRpc {
+export function makeUserRpc(client: DecthingsClient): UserRpc {
     return {
         findMatchingUsers: passthroughCall(client, 'User', 'findMatchingUsers'),
         getUsers: passthroughCall(client, 'User', 'getUsers'),

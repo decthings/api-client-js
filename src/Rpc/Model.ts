@@ -11,7 +11,7 @@ import {
 import { Data, DataElement, Parameter, ParameterProvider } from '../DataTypes'
 import { GenericError } from './Error'
 
-export interface IModelRpc {
+export interface ModelRpc {
     /**
      * Create a new model.
      * @param name The model's name.

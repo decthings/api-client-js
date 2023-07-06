@@ -12,9 +12,8 @@ import {
     makeTeamRpc,
     makeTerminalRpc,
     makeUserRpc
-} from './RPC'
-import { IDebugRpc, ITerminalRpc, IDatasetRpc, IModelRpc, ITeamRpc, IUserRpc, ILanguageRpc, IPersistentLauncherRpc, IFsRpc } from './RpcInterfaces'
-import { ISpawnedRpc } from './RpcInterfaces/SpawnedRpc'
+} from './RpcImpl'
+import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './Rpc'
 
 export class DecthingsClientClosedError extends Error {
     constructor() {
@@ -314,16 +313,16 @@ export class DecthingsClient extends EventEmitter {
         this.setApiKey(options.apiKey)
     }
 
-    public fs: IFsRpc
-    public debug: IDebugRpc
-    public terminal: ITerminalRpc
-    public spawned: ISpawnedRpc
-    public dataset: IDatasetRpc
-    public model: IModelRpc
-    public team: ITeamRpc
-    public user: IUserRpc
-    public persistentLauncher: IPersistentLauncherRpc
-    public language: ILanguageRpc
+    public fs: FsRpc
+    public debug: DebugRpc
+    public terminal: TerminalRpc
+    public spawned: SpawnedRpc
+    public dataset: DatasetRpc
+    public model: ModelRpc
+    public team: TeamRpc
+    public user: UserRpc
+    public persistentLauncher: PersistentLauncherRpc
+    public language: LanguageRpc
 
     /**
      * Call an RPC method on the server.

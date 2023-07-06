@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events'
 import { GenericError } from './Error'
 
-export interface ILanguageRpc extends EventEmitter {
+export interface LanguageRpc extends EventEmitter {
     /**
      * Event emitted when data is received from a language server.
      */

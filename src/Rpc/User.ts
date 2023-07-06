@@ -1,6 +1,6 @@
 import { GenericError } from './Error'
 
-export interface IUserRpc {
+export interface UserRpc {
     /**
      * Retrieves a list of matching users from a given search string. Will compare the searchTerm to the user's username.
      * @param searchTerm The term to compare to each username.

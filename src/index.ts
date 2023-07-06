@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
 import nodeFetch from 'node-fetch'
-import { DecthingsClient, DecthingsClientOptions } from './Client'
+import { DecthingsClient } from './Client'
 ;(DecthingsClient as any).WebSocket = (address: string, headers?: [string, string][]) => {
     const headersObj = {}
     if (headers) {
@@ -14,5 +14,5 @@ import { DecthingsClient, DecthingsClientOptions } from './Client'
 
 export * from './DataTypes'
 export * from './types'
-
-export { DecthingsClient, DecthingsClientOptions }
+export * from './Client'
+export * from './Rpc'

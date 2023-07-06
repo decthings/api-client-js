@@ -15,7 +15,7 @@ export type Stat = {
     ctime_nsec: number
 }
 
-export interface IFsRpc {
+export interface FsRpc {
     /**
      * Get file information from its name.
      *

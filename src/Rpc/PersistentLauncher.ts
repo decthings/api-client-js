@@ -1,7 +1,7 @@
 import { LauncherSpec } from '../types'
 import { GenericError } from './Error'
 
-export interface IPersistentLauncherRpc {
+export interface PersistentLauncherRpc {
     /**
      * Create a new persistent launcher.
      * @param name A name for the launcher.

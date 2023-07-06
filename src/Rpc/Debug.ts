@@ -18,7 +18,7 @@ export type DebugSessionTerminatedReason =
           exceptionDetails?: string
       }
 
-export interface IDebugRpc extends EventEmitter {
+export interface DebugRpc extends EventEmitter {
     /**
      * Event emitted when a debug session exits.
      */

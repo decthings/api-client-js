@@ -1,7 +1,7 @@
 import { Team, Role } from '../types'
 import { GenericError } from './Error'
 
-export interface ITeamRpc {
+export interface TeamRpc {
     /**
      * Create a new team.
      * @param name The team's name.
