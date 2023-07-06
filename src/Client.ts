@@ -106,7 +106,7 @@ export class DecthingsClient extends EventEmitter {
     private _httpServerAddress: string
     private _extraHeaders: [string, string][]
 
-    #_apiKey?: string
+    _apiKey?: string
     private _closed = false
 
     private _ws: {
@@ -235,7 +235,7 @@ export class DecthingsClient extends EventEmitter {
                     api,
                     method,
                     params,
-                    apiKey: this.#_apiKey
+                    apiKey: this._apiKey
                 }
                 return new Promise((resolve, reject) => {
                     waitingResponses.set(id, {
@@ -373,8 +373,8 @@ export class DecthingsClient extends EventEmitter {
         } else {
             // Send over HTTP
             const headers: [string, string][] = [['Content-Type', 'application/octet-stream']]
-            if (this.#_apiKey) {
-                headers.push(['Authorization', `Bearer ${this.#_apiKey}`])
+            if (this._apiKey) {
+                headers.push(['Authorization', `Bearer ${this._apiKey}`])
             }
             if (this._extraHeaders) {
                 headers.push(...this._extraHeaders)
@@ -420,9 +420,9 @@ export class DecthingsClient extends EventEmitter {
 
     public setApiKey(apiKey?: string) {
         if (typeof apiKey === 'string') {
-            this.#_apiKey = apiKey.trim()
+            this._apiKey = apiKey.trim()
         } else if (apiKey === null || apiKey === undefined) {
-            this.#_apiKey = undefined
+            this._apiKey = undefined
         } else {
             throw new Error('Invalid API key. Expected a string (or null/undefined for no API key), got ' + typeof apiKey)
         }

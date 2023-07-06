@@ -181,14 +181,14 @@ export function makeDatasetRpc(client: DecthingsClient): DatasetRpc {
 }
 
 class DebugRpcImpl extends EventEmitter implements DebugRpc {
-    #internal: {
+    _internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
         removeKeepalive: (id: string) => void
     }
     constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
-        this.#internal = {
+        this._internal = {
             client,
             addKeepalive,
             removeKeepalive
@@ -199,21 +199,21 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
             throw new Error('Invalid parameters: Expected an object.')
         }
         const subscribed = params.subscribeToEvents !== false
-        const res = await this.#internal.client.rawMethodCall('Debug', 'launchDebugSession', params, [], subscribed ? 'ws' : 'http')
+        const res = await this._internal.client.rawMethodCall('Debug', 'launchDebugSession', params, [], subscribed ? 'ws' : 'http')
         if (subscribed && res.result) {
-            this.#internal.addKeepalive(res.result.debugSessionId)
+            this._internal.addKeepalive(res.result.debugSessionId)
         }
         return res.result ? { result: res.result } : { error: res.error }
     }
     async getDebugSessions(params: Parameters<DebugRpc['getDebugSessions']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'getDebugSessions', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'getDebugSessions', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async terminateDebugSession(params: Parameters<DebugRpc['terminateDebugSession']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'terminateDebugSession', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'terminateDebugSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
@@ -226,7 +226,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         const [newParamProviders, data] = convertParameterProviders(params.params)
         const newParams = { ...params }
         newParams.params = newParamProviders
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callCreateModelState', newParams, data)
+        const res = await this._internal.client.rawMethodCall('Debug', 'callCreateModelState', newParams, data)
         if (res.error) {
             return { error: res.error }
         }
@@ -252,7 +252,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
             dataToSend = []
         }
 
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callInstantiateModel', newParams, dataToSend)
+        const res = await this._internal.client.rawMethodCall('Debug', 'callInstantiateModel', newParams, dataToSend)
         if (res.error) {
             return { error: res.error }
         }
@@ -265,21 +265,21 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         const [newParamProviders, data] = convertParameterProviders(params.params)
         const newParams = { ...params }
         newParams.params = newParamProviders
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callTrain', newParams, data)
+        const res = await this._internal.client.rawMethodCall('Debug', 'callTrain', newParams, data)
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async getTrainingStatus(params: Parameters<DebugRpc['getTrainingStatus']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingStatus', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'getTrainingStatus', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async getTrainingMetrics(params: Parameters<DebugRpc['getTrainingMetrics']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'getTrainingMetrics', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'getTrainingMetrics', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
@@ -304,7 +304,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         }
     }
     async cancelTrainingSession(params: Parameters<DebugRpc['cancelTrainingSession']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'cancelTrainingSession', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'cancelTrainingSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
@@ -317,7 +317,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         const [newParamProviders, data] = convertParameterProviders(params.params)
         const newParams = { ...params }
         newParams.params = newParamProviders
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callEvaluate', newParams, data)
+        const res = await this._internal.client.rawMethodCall('Debug', 'callEvaluate', newParams, data)
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
@@ -338,14 +338,14 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         }
     }
     async callGetModelState(params: Parameters<DebugRpc['callGetModelState']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'callGetModelState', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'callGetModelState', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async downloadStateData(params: Parameters<DebugRpc['downloadStateData']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Debug', 'downloadStateData', params, [])
+        const res = await this._internal.client.rawMethodCall('Debug', 'downloadStateData', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
@@ -371,7 +371,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         }
         const newParams = { ...params }
         delete newParams.data
-        const res = await this.#internal.client.rawMethodCall('Debug', 'sendToRemoteInspector', params, [data])
+        const res = await this._internal.client.rawMethodCall('Debug', 'sendToRemoteInspector', params, [data])
         if (res.error) {
             return { error: res.error }
         }
@@ -381,25 +381,25 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        const res = await this.#internal.client.rawMethodCall('Debug', 'subscribeToEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Debug', 'subscribeToEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(params.debugSessionId)
+        this._internal.addKeepalive(params.debugSessionId)
         return { result: res.result }
     }
     async unsubscribeFromEvents(params: Parameters<DebugRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        if (!this.#internal.client.hasWebSocket()) {
+        if (!this._internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Debug', 'unsubscribeFromEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Debug', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(params.debugSessionId)
+        this._internal.removeKeepalive(params.debugSessionId)
         return { result: res.result }
     }
 }
@@ -691,25 +691,25 @@ export function makeFsRpc(client: DecthingsClient): FsRpc {
 }
 
 class LanguageRpcImpl extends EventEmitter implements LanguageRpc {
-    #internal: {
+    _internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
         removeKeepalive: (id: string) => void
     }
     constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
-        this.#internal = {
+        this._internal = {
             client,
             addKeepalive,
             removeKeepalive
         }
     }
     async startLanguageServer(params: Parameters<LanguageRpc['startLanguageServer']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Language', 'startLanguageServer', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Language', 'startLanguageServer', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(res.result.languageServerId)
+        this._internal.addKeepalive(res.result.languageServerId)
         return { result: res.result }
     }
     async writeToLanguageServer(params: Parameters<LanguageRpc['writeToLanguageServer']>[0]) {
@@ -721,7 +721,7 @@ class LanguageRpcImpl extends EventEmitter implements LanguageRpc {
         }
         const newParams = { ...params }
         delete newParams.data
-        const res = await this.#internal.client.rawMethodCall('Language', 'writeToLanguageServer', newParams, [params.data])
+        const res = await this._internal.client.rawMethodCall('Language', 'writeToLanguageServer', newParams, [params.data])
         if (res.error) {
             return { error: res.error }
         }
@@ -731,14 +731,14 @@ class LanguageRpcImpl extends EventEmitter implements LanguageRpc {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        if (!this.#internal.client.hasWebSocket()) {
+        if (!this._internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Language', 'unsubscribeFromEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Language', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(params.languageServerId)
+        this._internal.removeKeepalive(params.languageServerId)
         return { result: res.result }
     }
 }
@@ -996,14 +996,14 @@ export function makePersistentLauncherRpc(client: DecthingsClient): PersistentLa
 }
 
 class SpawnedRpcImpl extends EventEmitter implements SpawnedRpc {
-    #internal: {
+    _internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
         removeKeepalive: (id: string) => void
     }
     constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
-        this.#internal = {
+        this._internal = {
             client,
             addKeepalive,
             removeKeepalive
@@ -1014,12 +1014,12 @@ class SpawnedRpcImpl extends EventEmitter implements SpawnedRpc {
             throw new Error('Invalid parameters: Expected an object.')
         }
         const subscribed = params.subscribeToEvents !== false
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'spawnCommand', params, [], subscribed ? 'ws' : 'http')
+        const res = await this._internal.client.rawMethodCall('Spawned', 'spawnCommand', params, [], subscribed ? 'ws' : 'http')
         if (res.error) {
             return { error: res.error }
         }
         if (subscribed) {
-            this.#internal.addKeepalive(res.result.spawnedCommandId)
+            this._internal.addKeepalive(res.result.spawnedCommandId)
         }
         return { result: res.result }
     }
@@ -1028,24 +1028,24 @@ class SpawnedRpcImpl extends EventEmitter implements SpawnedRpc {
             throw new Error('Invalid parameters: Expected an object.')
         }
         const subscribed = params.subscribeToEvents !== false
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'spawnCommandForModel', params, [], subscribed ? 'ws' : 'http')
+        const res = await this._internal.client.rawMethodCall('Spawned', 'spawnCommandForModel', params, [], subscribed ? 'ws' : 'http')
         if (res.error) {
             return { error: res.error }
         }
         if (subscribed) {
-            this.#internal.addKeepalive(res.result.spawnedCommandId)
+            this._internal.addKeepalive(res.result.spawnedCommandId)
         }
         return { result: res.result }
     }
     async terminateSpawnedCommand(params: Parameters<SpawnedRpc['terminateSpawnedCommand']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'terminateSpawnedCommand', params, [])
+        const res = await this._internal.client.rawMethodCall('Spawned', 'terminateSpawnedCommand', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async getSpawnedCommands(params: Parameters<SpawnedRpc['getSpawnedCommands']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'getSpawnedCommands', params, [])
+        const res = await this._internal.client.rawMethodCall('Spawned', 'getSpawnedCommands', params, [])
         if (res.error) {
             return { error: res.error }
         }
@@ -1066,7 +1066,7 @@ class SpawnedRpcImpl extends EventEmitter implements SpawnedRpc {
         }
         const newParams = { ...params }
         delete newParams.data
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'writeToSpawnedCommand', newParams, [data])
+        const res = await this._internal.client.rawMethodCall('Spawned', 'writeToSpawnedCommand', newParams, [data])
         if (res.error) {
             return { error: res.error }
         }
@@ -1076,25 +1076,25 @@ class SpawnedRpcImpl extends EventEmitter implements SpawnedRpc {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'subscribeToEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Spawned', 'subscribeToEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(params.spawnedCommandId)
+        this._internal.addKeepalive(params.spawnedCommandId)
         return { result: res.result }
     }
     async unsubscribeFromEvents(params: Parameters<SpawnedRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        if (!this.#internal.client.hasWebSocket()) {
+        if (!this._internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Spawned', 'unsubscribeFromEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Spawned', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(params.spawnedCommandId)
+        this._internal.removeKeepalive(params.spawnedCommandId)
         return { result: res.result }
     }
 }
@@ -1136,14 +1136,14 @@ export function makeTeamRpc(client: DecthingsClient): TeamRpc {
 }
 
 class TerminalRpcImpl extends EventEmitter implements TerminalRpc {
-    #internal: {
+    _internal: {
         client: DecthingsClient
         addKeepalive: (id: string) => void
         removeKeepalive: (id: string) => void
     }
     constructor(client: DecthingsClient, addKeepalive: (id: string) => void, removeKeepalive: (id: string) => void) {
         super()
-        this.#internal = {
+        this._internal = {
             client,
             addKeepalive,
             removeKeepalive
@@ -1154,24 +1154,24 @@ class TerminalRpcImpl extends EventEmitter implements TerminalRpc {
             throw new Error('Invalid parameters: Expected an object.')
         }
         const subscribed = params.subscribeToEvents !== false
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'launchTerminalSession', params, [], subscribed ? 'ws' : 'http')
+        const res = await this._internal.client.rawMethodCall('Terminal', 'launchTerminalSession', params, [], subscribed ? 'ws' : 'http')
         if (res.error) {
             return { error: res.error }
         }
         if (subscribed) {
-            this.#internal.addKeepalive(res.result.terminalSessionId)
+            this._internal.addKeepalive(res.result.terminalSessionId)
         }
         return { result: res.result }
     }
     async terminateTerminalSession(params: Parameters<TerminalRpc['terminateTerminalSession']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'terminateTerminalSession', params, [])
+        const res = await this._internal.client.rawMethodCall('Terminal', 'terminateTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async getTerminalSessions(params: Parameters<TerminalRpc['getTerminalSessions']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'getTerminalSessions', params, [])
+        const res = await this._internal.client.rawMethodCall('Terminal', 'getTerminalSessions', params, [])
         if (res.error) {
             return { error: res.error }
         }
@@ -1192,21 +1192,21 @@ class TerminalRpcImpl extends EventEmitter implements TerminalRpc {
         }
         const newParams = { ...params }
         delete newParams.data
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'writeToTerminalSession', newParams, [data])
+        const res = await this._internal.client.rawMethodCall('Terminal', 'writeToTerminalSession', newParams, [data])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async resizeTerminalSession(params: Parameters<TerminalRpc['resizeTerminalSession']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'resizeTerminalSession', params, [])
+        const res = await this._internal.client.rawMethodCall('Terminal', 'resizeTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
     async addFilesystemAccessForTerminalSession(params: Parameters<TerminalRpc['addFilesystemAccessForTerminalSession']>[0]) {
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'addFilesystemAccessForTerminalSession', params, [])
+        const res = await this._internal.client.rawMethodCall('Terminal', 'addFilesystemAccessForTerminalSession', params, [])
         if (res.error) {
             return { error: res.error }
         }
@@ -1216,25 +1216,25 @@ class TerminalRpcImpl extends EventEmitter implements TerminalRpc {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'subscribeToEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Terminal', 'subscribeToEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.addKeepalive(params.terminalSessionId)
+        this._internal.addKeepalive(params.terminalSessionId)
         return { result: res.result }
     }
     async unsubscribeFromEvents(params: Parameters<TerminalRpc['unsubscribeFromEvents']>[0]) {
         if (!params || typeof params !== 'object') {
             throw new Error('Invalid parameters: Expected an object.')
         }
-        if (!this.#internal.client.hasWebSocket()) {
+        if (!this._internal.client.hasWebSocket()) {
             return Promise.resolve({ error: { code: 'not_subscribed' as const } })
         }
-        const res = await this.#internal.client.rawMethodCall('Terminal', 'unsubscribeFromEvents', params, [], 'ws')
+        const res = await this._internal.client.rawMethodCall('Terminal', 'unsubscribeFromEvents', params, [], 'ws')
         if (res.error) {
             return { error: res.error }
         }
-        this.#internal.removeKeepalive(params.terminalSessionId)
+        this._internal.removeKeepalive(params.terminalSessionId)
         return { result: res.result }
     }
 }
