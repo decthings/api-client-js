@@ -17,15 +17,36 @@ import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherR
 
 export class DecthingsClientClosedError extends Error {
     constructor() {
-        super('The RPC call failed because the DecthingsClient was closed, by calling client.close().')
+        super('The RPC call failed because the DecthingsClient was closed, by calling client.close()')
         this.name = 'DecthingsClientClosedError'
     }
 }
 
 export class DecthingsClientWebSocketClosedError extends Error {
     constructor(public ev: import('ws').CloseEvent) {
-        super('The RPC call failed because the DecthingsClient WebSocket connection was closed.')
+        super('The RPC call failed because the DecthingsClient WebSocket connection was closed')
         this.name = 'DecthingsClientWebSocketClosedError'
+    }
+}
+
+export class DecthingsClientFetchError extends Error {
+    constructor(public fetchError: Error) {
+        super(`The RPC call failed with fetch error: ${fetchError.message}`)
+        this.name = 'DecthingsClientFetchError'
+    }
+}
+
+export class DecthingsClientHttpError extends Error {
+    constructor(public response: import('node-fetch').Response) {
+        super(`The RPC call failed with HTTP status ${response.status}`)
+        this.name = 'DecthingsClientHttpError'
+    }
+}
+
+export class DecthingsClientInvalidResponseError extends Error {
+    constructor(public reason: string) {
+        super(`The RPC call failed because the response was invalid: ${reason}`)
+        this.name = 'DecthingsClientInvalidResponseError'
     }
 }
 
@@ -79,7 +100,7 @@ export declare interface DecthingsClient extends EventEmitter {
 
 export class DecthingsClient extends EventEmitter {
     private static WebSocket: (address: string, extraHeaders?: [string, string][]) => InstanceType<typeof import('ws')>
-    private static fetch: typeof fetch
+    private static fetch: typeof import('node-fetch').default
 
     private _wsServerAddress: string
     private _httpServerAddress: string
@@ -359,16 +380,33 @@ export class DecthingsClient extends EventEmitter {
                 headers.push(...this._extraHeaders)
             }
             const body = Protocol.serializeForHttp(params, data)
-            const response = await DecthingsClient.fetch(`${this._httpServerAddress}/${api}/${method}`, {
-                method: 'POST',
-                body,
-                headers
-            })
-            if (response.headers.get('Content-Type') !== 'application/octet-stream') {
-                throw response
+            let response: import('node-fetch').Response
+            try {
+                response = await DecthingsClient.fetch(`${this._httpServerAddress}/${api}/${method}`, {
+                    method: 'POST',
+                    body,
+                    headers
+                })
+            } catch (e) {
+                throw new DecthingsClientFetchError(e)
             }
-            const responseBody = Buffer.from(await response.arrayBuffer())
-            res = Protocol.deserializeForHttp(responseBody)
+            if (!response.ok) {
+                throw new DecthingsClientHttpError(response)
+            }
+            if (response.headers.get('Content-Type') !== 'application/octet-stream') {
+                throw new DecthingsClientInvalidResponseError('Expected Content-Type: application/octet-stream for the response')
+            }
+            let responseBody: Buffer
+            try {
+                responseBody = Buffer.from(await response.arrayBuffer())
+            } catch (e) {
+                throw new DecthingsClientFetchError(e)
+            }
+            try {
+                res = Protocol.deserializeForHttp(responseBody)
+            } catch (e) {
+                throw new DecthingsClientInvalidResponseError(`Failed to parse response body because of the following exception:\n${e.stack}`)
+            }
         }
         if (res.response.error) {
             return { error: res.response.error, data: res.data }
