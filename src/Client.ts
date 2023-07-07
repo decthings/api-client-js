@@ -15,35 +15,49 @@ import {
 } from './RpcImpl'
 import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './Rpc'
 
-export class DecthingsClientClosedError extends Error {
+export class DecthingsClientError extends Error {
+    constructor(message: string) {
+        super(message)
+        this.name = 'DecthingsClientError'
+    }
+}
+
+export class DecthingsClientClosedError extends DecthingsClientError {
     constructor() {
-        super('The RPC call failed because the DecthingsClient was closed, by calling client.close()')
+        super('The RPC call was not performed because the DecthingsClient was closed, by calling client.close()')
         this.name = 'DecthingsClientClosedError'
     }
 }
 
-export class DecthingsClientWebSocketClosedError extends Error {
+export class DecthingsClientInvalidRequestError extends DecthingsClientError {
+    constructor(reason: string) {
+        super(`The RPC call was not performed because the provided parameters was invalid: ${reason}`)
+        this.name = 'DecthingsClientInvalidRequestError'
+    }
+}
+
+export class DecthingsClientWebSocketClosedError extends DecthingsClientError {
     constructor(public ev: import('ws').CloseEvent) {
         super('The RPC call failed because the DecthingsClient WebSocket connection was closed')
         this.name = 'DecthingsClientWebSocketClosedError'
     }
 }
 
-export class DecthingsClientFetchError extends Error {
+export class DecthingsClientFetchError extends DecthingsClientError {
     constructor(public fetchError: Error) {
         super(`The RPC call failed with fetch error: ${fetchError.message}`)
         this.name = 'DecthingsClientFetchError'
     }
 }
 
-export class DecthingsClientHttpError extends Error {
+export class DecthingsClientHttpError extends DecthingsClientError {
     constructor(public response: import('node-fetch').Response) {
         super(`The RPC call failed with HTTP status ${response.status}`)
         this.name = 'DecthingsClientHttpError'
     }
 }
 
-export class DecthingsClientInvalidResponseError extends Error {
+export class DecthingsClientInvalidResponseError extends DecthingsClientError {
     constructor(public reason: string) {
         super(`The RPC call failed because the response was invalid: ${reason}`)
         this.name = 'DecthingsClientInvalidResponseError'
