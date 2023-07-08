@@ -564,7 +564,7 @@ export class DataElement {
      * Creates a new DataElement which holds a dictionary (key/value pairs).
      */
     public static dict(entries: Map<string, Data | DataElement>): DataElement {
-        if (!(entries instanceof Map)) {
+        if (!(entries instanceof Map) && {}.toString.call(entries) != '[object Map]') {
             throw new Error(`Expected entries to be a Map, got ${typeOf(entries)}.`)
         }
 
