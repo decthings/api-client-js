@@ -54,10 +54,11 @@ export interface DatasetRpc {
     /**
      * Add entries to a dataset.
      * @param datasetId The dataset's id.
-     * @param entries An array containing the data for each entry.
+     * @param entries An array containing the data for each entry. If a Buffer is provided as an entry, it should contain the data as returned by
+     * Data.serialize() or DataElement.serialize().
      * @param datasetVersionId If specified, the operation will only be performed if the current dataset versionId is equal to the specified string.
      */
-    addEntries(params: { datasetId: string; entries: Data[] | DataElement[]; datasetVersionId?: string }): Promise<{
+    addEntries(params: { datasetId: string; entries: (Data | Buffer)[] | (DataElement | Buffer)[]; datasetVersionId?: string }): Promise<{
         error?:
             | { code: 'dataset_not_found' | 'access_denied' | 'quota_exceeded' | 'limit_exceeded' }
             | { code: 'incorrect_version_id'; datasetVersionId: string }
@@ -70,10 +71,11 @@ export interface DatasetRpc {
     /**
      * Add entries to the 'needs review' folder of a dataset.
      * @param datasetId The dataset's id.
-     * @param entries An array containing the data for each entry.
+     * @param entries An array containing the data for each entry. If a Buffer is provided as an entry, it should contain the data as returned by
+     * Data.serialize() or DataElement.serialize().
      * @param datasetVersionId If specified, the operation will only be performed if the current dataset versionId is equal to the specified string.
      */
-    addEntriesToNeedsReview(params: { datasetId: string; entries: Data[] | DataElement[]; datasetVersionId?: string }): Promise<{
+    addEntriesToNeedsReview(params: { datasetId: string; entries: (Data | Buffer)[] | (DataElement | Buffer)[]; datasetVersionId?: string }): Promise<{
         error?:
             | { code: 'dataset_not_found' | 'access_denied' | 'quota_exceeded' | 'limit_exceeded' }
             | { code: 'incorrect_version_id'; datasetVersionId: string }
@@ -86,14 +88,15 @@ export interface DatasetRpc {
     /**
      * Set the data of an item within the 'needs review' folder of a dataset and move the entry into the actual dataset.
      * @param datasetId The dataset's id.
-     * @param entries An array containing the indexes and the data for each entry.
+     * @param entries An array containing the indexes and the data for each entry. If a Buffer is provided as data, it should contain the data as
+     * returned by Data.serialize() or DataElement.serialize().
      * @param datasetVersionId If specified, the operation will only be performed if the current dataset versionId is equal to the specified string.
      */
     finalizeNeedsReviewEntries(params: {
         datasetId: string
         entries: {
             index: number
-            data: Data | DataElement
+            data: Data | DataElement | Buffer
         }[]
         datasetVersionId?: string
     }): Promise<{

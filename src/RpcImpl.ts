@@ -63,10 +63,13 @@ export function makeDatasetRpc(client: DecthingsClient): DatasetRpc {
                 'Dataset',
                 'addEntries',
                 newParams,
-                params.entries.map((entry: Data | DataElement) => {
+                params.entries.map((entry: Data | DataElement | Buffer) => {
+                    if (Buffer.isBuffer(entry)) {
+                        return entry
+                    }
                     if (!(entry instanceof Data) && !(entry instanceof DataElement)) {
                         throw new DecthingsClientInvalidRequestError(
-                            'Invalid parameter "entries": Expected each element to be an instance of Data or DataElement.'
+                            'Invalid parameter "entries": Expected each element to be an instance of Data, DataElement or Buffer.'
                         )
                     }
                     return entry.serialize()
@@ -92,10 +95,13 @@ export function makeDatasetRpc(client: DecthingsClient): DatasetRpc {
                 'Dataset',
                 'addEntriesToNeedsReview',
                 newParams,
-                params.entries.map((entry: Data | DataElement) => {
+                params.entries.map((entry: Data | DataElement | Buffer) => {
+                    if (Buffer.isBuffer(entry)) {
+                        return entry
+                    }
                     if (!(entry instanceof Data) && !(entry instanceof DataElement)) {
                         throw new DecthingsClientInvalidRequestError(
-                            'Invalid parameter "entries": Expected each element to be an instance of Data or DataElement.'
+                            'Invalid parameter "entries": Expected each element to be an instance of Data, DataElement or Buffer.'
                         )
                     }
                     return entry.serialize()
@@ -118,12 +124,15 @@ export function makeDatasetRpc(client: DecthingsClient): DatasetRpc {
                 if (!entry || typeof entry !== 'object') {
                     throw new DecthingsClientInvalidRequestError('Invalid entries: Expected each element to be an object.')
                 }
-                if (!(entry.data instanceof Data) && !(entry.data instanceof DataElement)) {
+                if (Buffer.isBuffer(entry.data)) {
+                    data.push(entry.data)
+                } else if (entry.data instanceof Data || entry.data instanceof DataElement) {
+                    data.push(entry.data.serialize())
+                } else {
                     throw new DecthingsClientInvalidRequestError(
                         'Invalid entries: Expected the field "data" of each element to be an instance of Data or DataElement.'
                     )
                 }
-                data.push(entry.data.serialize())
                 const newEntry = { ...entry }
                 delete newEntry.data
                 return newEntry
