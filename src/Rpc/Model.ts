@@ -439,6 +439,7 @@ export interface ModelRpc {
      */
     train(params: {
         modelId: string
+        stateId?: string
         newStateName: string
         params: ParameterProvider[]
         executionLocation: { type: 'persistentLauncher'; persistentLauncherId: string } | { type: 'temporaryLauncher'; spec: LauncherSpec }

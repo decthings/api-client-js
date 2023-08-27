@@ -106,6 +106,7 @@ export interface DatasetRpc {
             | GenericError
         result?: {
             newDatasetVersionId: string
+            removedBytesFromNeedsReview: number
         }
     }>
 
@@ -156,6 +157,9 @@ export interface DatasetRpc {
             | GenericError
         result?: {
             newDatasetVersionId: string
+            removedBytes: number
+            newWaitingToRemoveBytes: number
+            newWaitingToRemoveAmount: number
         }
     }>
 
@@ -172,6 +176,7 @@ export interface DatasetRpc {
             | GenericError
         result?: {
             newDatasetVersionId: string
+            removedBytes: number
         }
     }>
 }
