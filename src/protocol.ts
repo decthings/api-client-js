@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer'
-import * as Varint from './Varint'
+import * as Varint from './varint'
 
 export type RequestMessage = {
     api: string
@@ -65,11 +65,15 @@ export function serializeForWebsocket(id: number, message: RequestMessage, data:
     const msgBuf = Buffer.from(JSON.stringify(message))
     const msgLengthVarint = Varint.serializeVarUint64(msgBuf.byteLength)
 
-    const final: Buffer[] = [idBuf, numAdditionalSegmentsBuf, msgLengthVarint, msgBuf]
+    const final: Buffer[] = [idBuf, numAdditionalSegmentsBuf, msgLengthVarint]
 
     data.forEach((el) => {
-        final.push(el)
+        const elLengthVarint = Varint.serializeVarUint64(el.byteLength)
+        final.push(elLengthVarint)
     })
+
+    final.push(msgBuf)
+    final.push(...data)
 
     return Buffer.concat(final)
 }

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 import { Buffer } from 'buffer'
-import * as Protocol from './Protocol'
+import * as Protocol from './protocol'
 import {
     makeDatasetRpc,
     makeDebugRpc,
@@ -12,8 +12,9 @@ import {
     makeTeamRpc,
     makeTerminalRpc,
     makeUserRpc
-} from './RpcImpl'
-import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './Rpc'
+} from './rpc_impl'
+import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './rpc'
+import { DecthingsClientConnectedWebsocket, DecthingsClientWebsocket, createDecthingsClientWebsocket } from './ws'
 
 export class DecthingsClientError extends Error {
     constructor(message: string) {
@@ -116,188 +117,17 @@ export class DecthingsClient extends EventEmitter {
     private static WebSocket: (address: string, extraHeaders?: [string, string][]) => InstanceType<typeof import('ws')>
     private static fetch: typeof import('node-fetch').default
 
-    private _wsServerAddress: string
     private _httpServerAddress: string
     private _extraHeaders: [string, string][]
 
-    _apiKey?: string
+    private _apiKey?: string
     private _closed = false
 
-    private _ws: {
-        keepAlive: Set<string>
-        call: (api: string, method: string, params: any, data: Buffer[]) => Promise<{ response: Protocol.Response; data: Buffer[] }>
-        dispose: () => void
-        disposeIfUnused: () => void
-    }
-
-    private _createSocket() {
-        const waitingResponses = new Map<number, { resolve: (value: { response: Protocol.Response; data: Buffer[] }) => void; reject: (reason: any) => void }>()
-
-        let disposed = false
-        let onDisposed: () => void
-
-        const socketPromise = new Promise<import('ws')>(async (resolve) => {
-            while (true) {
-                if (disposed) {
-                    resolve(null)
-                    return
-                }
-
-                const ws = DecthingsClient.WebSocket(this._wsServerAddress, this._extraHeaders)
-
-                ws.addEventListener('message', (data) => {
-                    if (disposed) {
-                        return
-                    }
-                    const parsed = Protocol.deserializeForWs(
-                        typeof data.data === 'string'
-                            ? Buffer.from(data.data)
-                            : Buffer.isBuffer(data.data)
-                            ? data.data
-                            : Array.isArray(data.data)
-                            ? Buffer.concat(data.data)
-                            : Buffer.from(data.data)
-                    )
-                    if (parsed.response) {
-                        const [messageId, response] = parsed.response
-                        const waiting = waitingResponses.get(messageId)
-                        if (waiting) {
-                            waitingResponses.delete(messageId)
-                            waiting.resolve({ response, data: parsed.data })
-                        }
-                        this._ws.disposeIfUnused()
-                    } else {
-                        this.emit('event', parsed.event.api, parsed.event.event, parsed.event.params, parsed.data)
-                    }
-                })
-
-                const didOpen = await new Promise<boolean>((_resolve) => {
-                    const closedListener = (ev: import('ws').CloseEvent) => {
-                        onDisposed = null
-                        this.emit('ws_close', ev)
-                        _resolve(false)
-                    }
-                    const errorListener = (ev: import('ws').ErrorEvent) => {
-                        onDisposed = null
-                        this.emit('ws_error', ev)
-                        _resolve(false)
-                    }
-                    const openListener = () => {
-                        ws.removeEventListener('close', closedListener)
-                        ws.removeEventListener('error', errorListener)
-
-                        _resolve(true)
-                        resolve(ws)
-
-                        if (disposed) {
-                            ws.close()
-                            return
-                        }
-
-                        onDisposed = () => {
-                            ws.close()
-                        }
-
-                        ws.addEventListener('error', (ev) => {
-                            this.emit('ws_error', ev)
-                        })
-                        ws.addEventListener('close', (ev) => {
-                            this.emit('ws_close', ev)
-                            if (disposed) {
-                                return
-                            }
-                            waitingResponses.forEach((handler) => {
-                                handler.reject(new DecthingsClientWebSocketClosedError(ev))
-                            })
-                            waitingResponses.clear()
-                            this.emit('subscriptions_removed')
-                            this._ws.dispose()
-                        })
-                        this.emit('ws_open')
-
-                        _resolve(true)
-                    }
-                    ws.addEventListener('close', closedListener)
-                    ws.addEventListener('error', errorListener)
-                    ws.addEventListener('open', openListener)
-
-                    onDisposed = () => {
-                        ws.removeAllListeners()
-                        ws.close()
-                        resolve(null)
-                        _resolve(true)
-                    }
-                })
-
-                if (didOpen) {
-                    return
-                }
-
-                await new Promise((_resolve) => setTimeout(_resolve, 100))
-            }
-        })
-
-        let idCounter = 0
-        const processingRequests = new Set<number>()
-
-        this._ws = {
-            keepAlive: new Set(),
-            call: (api, method, params, data) => {
-                const id = idCounter++
-                processingRequests.add(id)
-                const message: Protocol.RequestMessage = {
-                    api,
-                    method,
-                    params,
-                    apiKey: this._apiKey
-                }
-                return new Promise((resolve, reject) => {
-                    waitingResponses.set(id, {
-                        resolve: (val) => {
-                            resolve(val)
-                            setTimeout(() => {
-                                if (disposed) {
-                                    return
-                                }
-                                // We dispose processing in next tick in order to not dispose ws between request complete
-                                // and addKeepalive
-                                processingRequests.delete(id)
-                                this._ws.disposeIfUnused()
-                            }, 0)
-                        },
-                        reject
-                    })
-                    socketPromise.then((socket) => {
-                        if (!socket) {
-                            return
-                        }
-                        socket.send(Protocol.serializeForWebsocket(id, message, data))
-                    })
-                })
-            },
-            dispose: () => {
-                disposed = true
-                waitingResponses.forEach((handler) => {
-                    handler.reject(new DecthingsClientClosedError())
-                })
-                onDisposed && onDisposed()
-                delete this._ws
-            },
-            disposeIfUnused: () => {
-                if (processingRequests.size === 0 && this._ws.keepAlive.size === 0) {
-                    this._ws.dispose()
-                }
-            }
-        }
-    }
+    private _ws: DecthingsClientWebsocket
 
     constructor(options: DecthingsClientOptions = {}) {
         super()
 
-        this._wsServerAddress = options.wsServerAddress || defaultWsAddress
-        if (typeof this._wsServerAddress !== 'string') {
-            throw new Error('Invalid option: Expected wsServerAddress to be a string.')
-        }
         this._httpServerAddress = options.httpServerAddress || defaultHttpAddress
         if (typeof this._httpServerAddress !== 'string') {
             throw new Error('Invalid option: Expected httpServerAddress to be a string.')
@@ -320,29 +150,40 @@ export class DecthingsClient extends EventEmitter {
             this._extraHeaders = options.extraHeaders
         }
 
-        const addKeepalive = (id: string) => {
-            if (!this._ws) {
-                return
-            }
-            this._ws.keepAlive.add(id)
+        const wsServerAddress = options.wsServerAddress || defaultWsAddress
+        if (typeof wsServerAddress !== 'string') {
+            throw new Error('Invalid option: Expected wsServerAddress to be a string.')
         }
-        const removeKeepalive = (id: string) => {
-            if (!this._ws) {
-                return
+        this._ws = createDecthingsClientWebsocket({
+            WebSocket: DecthingsClient.WebSocket,
+            wsServerAddress,
+            extraHeaders: this._extraHeaders,
+            onClose: (ev) => {
+                this.emit('ws_close', ev)
+            },
+            onError: (ev) => {
+                this.emit('ws_error', ev)
+            },
+            onOpen: () => {
+                this.emit('ws_open')
+            },
+            onSubscriptionsRemoved: () => {
+                this.emit('subscriptions_removed')
+            },
+            onEvent: (api, event, params, data) => {
+                this.emit('event', api, event, params, data)
             }
-            this._ws.keepAlive.delete(id)
-            this._ws.disposeIfUnused()
-        }
+        })
 
         this.dataset = makeDatasetRpc(this)
-        this.debug = makeDebugRpc(this, addKeepalive, removeKeepalive)
+        this.debug = makeDebugRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
         this.fs = makeFsRpc(this)
-        this.language = makeLanguageRpc(this, addKeepalive, removeKeepalive)
+        this.language = makeLanguageRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
         this.model = makeModelRpc(this)
         this.persistentLauncher = makePersistentLauncherRpc(this)
-        this.spawned = makeSpawnedRpc(this, addKeepalive, removeKeepalive)
+        this.spawned = makeSpawnedRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
         this.team = makeTeamRpc(this)
-        this.terminal = makeTerminalRpc(this, addKeepalive, removeKeepalive)
+        this.terminal = makeTerminalRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
         this.user = makeUserRpc(this)
 
         this.setApiKey(options.apiKey)
@@ -369,21 +210,25 @@ export class DecthingsClient extends EventEmitter {
         method: string,
         params: any,
         data: Buffer[],
-        mode: 'http' | 'ws' = 'http'
-    ): Promise<{ error?: any; result?: any; data: Buffer[] }> {
+        mode: 'http' | 'ws' | 'wsIfAvailableOtherwiseNone' = 'http'
+    ): Promise<{ notCalled?: true; error?: any; result?: any; data: Buffer[] }> {
         if (this._closed) {
             throw new DecthingsClientClosedError()
         }
-        if (!this._ws && mode === 'ws') {
-            this._createSocket()
+        let websocket: DecthingsClientConnectedWebsocket
+        if (mode === 'ws') {
+            websocket = this._ws.getOrCreateSocket()
+        } else if (mode === 'wsIfAvailableOtherwiseNone') {
+            websocket = this._ws.maybeGetSocket()
+            return { notCalled: true, data: [] }
         }
         let res: {
             response: Protocol.Response
             data: Buffer[]
         }
-        if (mode === 'ws') {
+        if (websocket) {
             // Send over WebSocket
-            res = await this._ws.call(api, method, params, data)
+            res = await websocket.call(api, method, params, data, this._apiKey)
         } else {
             // Send over HTTP
             const headers: [string, string][] = [['Content-Type', 'application/octet-stream']]
@@ -428,10 +273,6 @@ export class DecthingsClient extends EventEmitter {
         return { result: res.response.result, data: res.data }
     }
 
-    public hasWebSocket(): boolean {
-        return Boolean(this._ws)
-    }
-
     public setApiKey(apiKey?: string) {
         if (typeof apiKey === 'string') {
             this._apiKey = apiKey.trim()
@@ -448,6 +289,6 @@ export class DecthingsClient extends EventEmitter {
         }
         this._closed = true
         this.emit('close')
-        this._ws && this._ws.dispose()
+        this._ws.dispose()
     }
 }

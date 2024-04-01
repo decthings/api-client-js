@@ -1,12 +1,21 @@
-import { GenericError } from './Error'
-
 export interface UserRpc {
     /**
-     * Retrieves a list of matching users from a given search string. Will compare the searchTerm to the user's username.
-     * @param searchTerm The term to compare to each username.
+     * Retrieves a list of matching users from a given search string. Will compare the searchTerm to the user's
+     * username.
      */
-    findMatchingUsers(params: { searchTerm: string }): Promise<{
-        error?: GenericError
+    findMatchingUsers(params: {
+        /** The term to search for. */
+        searchTerm: string
+    }): Promise<{
+        error?:
+            | {
+                  code: 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {
             users: {
                 userId: string
@@ -17,10 +26,20 @@ export interface UserRpc {
 
     /**
      * Retrieve information about users. If the requested user wasn't returned, it means that the user doesn't exist.
-     * @param userIds Which users to fetch.
      */
-    getUsers(params: { userIds: string[] }): Promise<{
-        error?: GenericError
+    getUsers(params: {
+        /** Which users to fetch */
+        userIds: string[]
+    }): Promise<{
+        error?:
+            | {
+                  code: 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {
             users: {
                 userId: string
@@ -30,17 +49,27 @@ export interface UserRpc {
     }>
 
     /**
-     * Retrieve information about notifications on the account.
-     *
-     * If the requested notification wasn't returned, it means that the notification doesn't exist.
-     * @param notificationIds Which notifications to fetch. If unspecified, all notifications will be fetched.
+     * Get notifications for the logged in user. If the requested notification wasn't returned, it means that the
+     * notification doesn't exist.
      */
-    getNotifications(params: { notificationIds?: string[] }): Promise<{
-        error?: GenericError
+    getNotifications(params: {
+        /** Which notifications to fetch. If unspecified, all notifications will be fetched. */
+        notificationIds?: string[]
+    }): Promise<{
+        error?:
+            | {
+                  code: 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {
             notifications: {
                 id: string
                 timestamp: number
+                viewed: boolean
                 data:
                     | {
                           type: 'accountRegistered'
@@ -70,35 +99,55 @@ export interface UserRpc {
                               url: string
                           }
                       }
-                viewed: boolean
             }[]
         }
     }>
 
     /**
-     * Delete or set status to viewed for a given notification.
-     * @param notificationId The notification's id.
-     * @param action Whether to delete or set the notification as viewed.
+     * Delete or set status to viewed for a notification.
      */
-    setNotification(params: { notificationId: string; action: 'delete' | 'viewed' }): Promise<{
-        error?: { code: 'notification_not_found' } | GenericError
+    setNotification(params: {
+        /** The notification's id. */
+        notificationId: string
+        /** Whether to delete or set the notification as viewed. */
+        action: 'delete' | 'viewed'
+    }): Promise<{
+        error?:
+            | {
+                  code: 'notification_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {}
     }>
 
     /**
      * Retrieve stats for used resources in the specified billing cycle. All costs are specified in USD.
-     * @param billingCycle Which billing cycle to fetch for. Defaults to the current billing cycle.
-     * @param resources IDs of models, datasets or persistent launchers. Will only include data from these
-     * resources. If unspecified, all data will be included.
      */
     getBillingStats(params: {
+        /** Month to fetch. Defaults to the current billing cycle. */
         billingCycle?: {
             year: number
             month: 'JAN' | 'FEB' | 'MAR' | 'APR' | 'MAY' | 'JUN' | 'JUL' | 'AUG' | 'SEP' | 'OCT' | 'NOV' | 'DEC'
         }
+        /**
+         * Identifiers of models, datasets or persistent launchers. Will only include data from these resources. If
+         * unspecified, all data will be included.
+         */
         resources?: string[]
     }): Promise<{
-        error?: GenericError
+        error?:
+            | {
+                  code: 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {
             year: number
             month: 'JAN' | 'FEB' | 'MAR' | 'APR' | 'MAY' | 'JUN' | 'JUL' | 'AUG' | 'SEP' | 'OCT' | 'NOV' | 'DEC'
@@ -293,7 +342,15 @@ export interface UserRpc {
      * Estimates the amount that has not been paid, in USD.
      */
     estimateAmountDue(): Promise<{
-        error?: GenericError
+        error?:
+            | {
+                  code: 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {
             amount: number
         }
@@ -303,7 +360,15 @@ export interface UserRpc {
      * Retrieve quotas and quota usage history.
      */
     getQuotas(): Promise<{
-        error?: GenericError
+        error?:
+            | {
+                  code: 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
         result?: {
             quotas: {
                 name: string

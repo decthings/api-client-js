@@ -15,12 +15,11 @@
   "author": "Decthings",
   "license": "MIT",
   "dependencies": {
-    "node-fetch": "^2.6.12",
-    "ws": "^8.13.0"
+    "@types/node": "^20",
+    "node-fetch": "^2.7.0",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
-    "@types/node": "^20.3.3",
-    "@types/node-fetch": "^2.6.4",
-    "@types/ws": "^8.5.5"
+    "@types/ws": "^8.5.10"
   }
 }
