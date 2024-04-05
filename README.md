@@ -13,7 +13,7 @@ Can be used either in the browser or in Node.js.
 ---
 #### Documentation
 
-Documentation for this package is available [here](https://decthings.com/docs/api-nodejs).
+Documentation for this package is available [here](https://decthings.com/reference/javascript).
 
 ---
 
