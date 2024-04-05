@@ -43,7 +43,7 @@ export type Model = {
     ongoingTrainingSessions: string[]
     trainingSessions: string[]
     states: ModelState[]
-    currentState: string
+    activeState: string
     snapshots: {
         id: string
         name: string
@@ -478,7 +478,7 @@ export interface ModelRpc {
         mountModels?: {
             /** Id of the other model to mount. */
             modelId: string
-            /** Specifies which state on the other model to use. Defaults to the current state. */
+            /** Specifies which state on the other model to use. Defaults to the active state. */
             stateId?: string
             /**
              * If specified, this snapshot on the other model will be used. Cannot be used together with stateId, as the state
@@ -614,7 +614,7 @@ export interface ModelRpc {
                       | 'access_denied'
                       | 'quota_exceeded'
                       | 'state_not_found'
-                      | 'state_is_current'
+                      | 'state_is_active'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
@@ -781,9 +781,9 @@ export interface ModelRpc {
     }>
 
     /**
-     * Set the current state of a model.
+     * Set the active state of a model.
      */
-    setCurrentModelState(params: {
+    setActiveModelState(params: {
         /** The model's id. */
         modelId: string
         /** The state's id. */
@@ -815,7 +815,7 @@ export interface ModelRpc {
                   code:
                       | 'model_not_found'
                       | 'state_not_found'
-                      | 'state_is_current'
+                      | 'state_is_active'
                       | 'access_denied'
                       | 'bad_credentials'
                       | 'too_many_requests'
@@ -836,7 +836,7 @@ export interface ModelRpc {
     getModelState(params: {
         /** The model's id. */
         modelId: string
-        /** The state's id. Defaults to the current state. */
+        /** The state's id. Defaults to the active state. */
         stateId?: string
         /** Which keys to fetch. Defaults to all keys. */
         keys?: string[]
@@ -899,7 +899,7 @@ export interface ModelRpc {
     train(params: {
         /** The model's id. */
         modelId: string
-        /** Which state to use when instantiating the model. Defaults to the current state. */
+        /** Which state to use when instantiating the model. Defaults to the active state. */
         stateId?: string
         /** A name to give the new state once it is created. */
         newStateName: string
