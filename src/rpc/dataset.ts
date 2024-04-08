@@ -4,6 +4,7 @@ export type Dataset = {
     id: string
     name: string
     description: string
+    tags: { tag: string; value: string }[]
     /**
      * If this dataset was created by a user, the owner will be the userId for that user. Otherwise, the dataset was
      * be created by Decthings, in which case the owner will be "decthings".
@@ -39,6 +40,8 @@ export interface DatasetRpc {
         name: string
         /** A description of the dataset. */
         description: string
+        /**  Tags are used to specify things like dataset type (image classification, etc.) and other metadata. */
+        tags?: { tag: string; value: string }[]
         /**
          * Each key contains separate data, allowing you to mix multiple types. For example, for an image dataset you
          * could have an "image" of type image, and "label" of type string.
@@ -72,6 +75,7 @@ export interface DatasetRpc {
         properties: {
             name?: string
             description?: string
+            tags?: { tag: string; value: string }[]
         }
     }): Promise<{
         error?:

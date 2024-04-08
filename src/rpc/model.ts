@@ -22,6 +22,7 @@ export type Model = {
     id: string
     name: string
     description: string
+    tags: { tag: string; value: string }[]
     owner: string
     access: 'read' | 'readwrite'
     language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
@@ -94,6 +95,8 @@ export interface ModelRpc {
         options:
             | {
                   type: 'code'
+                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
+                  tags?: { tag: string; value: string }[]
                   parameterDefinitions?: ParameterDefinitions
                   language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
                   /** At the time of writing, presets "none", "empty", "tensorflowjs", "pytorch" and "tensorflow" are available. */
@@ -102,6 +105,8 @@ export interface ModelRpc {
               }
             | {
                   type: 'upload'
+                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
+                  tags?: { tag: string; value: string }[]
                   parameterDefinitions?: ParameterDefinitions
                   /** At the time of writing, formats "tflite" and "onnx" are available. */
                   format: string
@@ -344,6 +349,7 @@ export interface ModelRpc {
         properties: {
             name?: string
             description?: string
+            tags?: { tag: string; value: string }[]
             parameterDefinitions?: ParameterDefinitions
             defaultLauncherSpecs?: {
                 createState?: LauncherSpec
