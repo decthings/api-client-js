@@ -30,8 +30,18 @@ export interface PersistentLauncherRpc {
      * launcher doesn't exist (or you don't have access to it).
      */
     getPersistentLaunchers(params: {
-        /** Which launchers to fetch. If unspecified, all persistent launchers will be fetched. */
-        persistentLauncherIds?: string[]
+        /** Number of items from the results to skip. Defaults to 0. */
+        offset?: number
+        /** Max number of items to return. Defaults to 20. */
+        limit?: number
+        /** If specified, determines which items to retrieve. */
+        filter?: {
+            ids?: string[]
+            searchName?: string
+        }
+        /** Specifies a field in the returned items to sort by. Defaults to "createdAt". */
+        sort?: string
+        sortDirection?: 'asc' | 'desc'
     }): Promise<{
         error?:
             | {
@@ -46,6 +56,7 @@ export interface PersistentLauncherRpc {
             persistentLaunchers: {
                 id: string
                 name: string
+                createdAt?: number
                 spec: LauncherSpec
                 state:
                     | {
@@ -55,12 +66,15 @@ export interface PersistentLauncherRpc {
                           type: 'recreating'
                           previous: 'exit' | 'unknown'
                       }
-                createdAt?: number
                 running: {
                     id: string
                     type: 'terminal' | 'spawned' | 'debug' | 'createModelState' | 'train' | 'evaluate'
                 }[]
             }[]
+            /** The total number of datasets that matched the filter. */
+            total: number
+            offset: number
+            limit: number
         }
     }>
 

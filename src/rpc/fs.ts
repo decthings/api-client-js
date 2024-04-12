@@ -16,9 +16,10 @@ export type Stat = {
 export interface FsRpc {
     /**
      * Get file information from its name. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOENT - The name does not exist within the directory.
-     * ENOTDIR - The parent inode was not a directory.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOENT - The name does not exist within the directory.
+     * - ENOTDIR - The parent inode was not a directory.
      */
     lookup(params: {
         /** The model's id. */
@@ -55,11 +56,9 @@ export interface FsRpc {
     }>
 
     /**
-     * Get file information from its inode number.
+     * Get file information from its inode number. Errors:
      *
-     * Errors:
-     * <br />
-     * ESTALE - The inode does not exist.
+     * - ESTALE - The inode does not exist.
      */
     getattr(params: {
         /** The model's id. */
@@ -84,15 +83,11 @@ export interface FsRpc {
     }>
 
     /**
-     * Set file information.
+     * Set file information. Errors:
      *
-     * Errors:
-     * <br />
-     * ESTALE - The inode does not exist.
-     * <br />
-     * EFBIG - The target size is too large.
-     * <br />
-     * EISDIR - Attempted to resize a directory.
+     * - ESTALE - The inode does not exist.
+     * - EFBIG - The target size is too large.
+     * - EISDIR - Attempted to resize a directory.
      */
     setattr(params: {
         /** The model's id. */
@@ -139,10 +134,11 @@ export interface FsRpc {
 
     /**
      * Create a regular or special file. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory.
-     * EEXIST - The name already exists within the directory.
-     * ENOSPC - There is not enough space within the filesystem.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory.
+     * - EEXIST - The name already exists within the directory.
+     * - ENOSPC - There is not enough space within the filesystem.
      */
     mknod(params: {
         /** The model's id. */
@@ -183,9 +179,10 @@ export interface FsRpc {
 
     /**
      * Read from a file. Errors:
-     * ESTALE - The inode does not exist.
-     * EISDIR - The inode was a directory.
-     * EINVAL - The inode was not a file suitable for reading.
+     *
+     * - ESTALE - The inode does not exist.
+     * - EISDIR - The inode was a directory.
+     * - EINVAL - The inode was not a file suitable for reading.
      */
     read(params: {
         /** The model's id. */
@@ -227,10 +224,11 @@ export interface FsRpc {
      * contains the number of The return value bytesWritten contains the number of bytes written. If *truncate* is
      * true, the file is truncated to the length of the data before write. In this case, the data is written to the
      * start of the file and *offset* is ignored. Errors:
-     * ESTALE - The inode does not exist.
-     * EISDIR - The inode was a directory.
-     * ENOSPC - Not enough space on the filesystem to perform the write.
-     * EINVAL - The inode was not a file suitable for writing.
+     *
+     * - ESTALE - The inode does not exist.
+     * - EISDIR - The inode was a directory.
+     * - ENOSPC - Not enough space on the filesystem to perform the write.
+     * - EINVAL - The inode was not a file suitable for writing.
      */
     write(params: {
         /** The model's id. */
@@ -269,10 +267,11 @@ export interface FsRpc {
 
     /**
      * Create a symbolic link. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory.
-     * EEXIST - The name already exists within the directory.
-     * ENOSPC - There is not enough space within the filesystem.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory.
+     * - EEXIST - The name already exists within the directory.
+     * - ENOSPC - There is not enough space within the filesystem.
      */
     symlink(params: {
         /** The model's id. */
@@ -311,8 +310,8 @@ export interface FsRpc {
 
     /**
      * Read value of a symbolic link. Errors:
-     * ESTALE - The inode does not exist.
-     * EINVAL - The inode was not a symbolic link.
+     * - ESTALE - The inode does not exist.
+     * - EINVAL - The inode was not a symbolic link.
      */
     readlink(params: {
         /** The model's id. */
@@ -346,10 +345,11 @@ export interface FsRpc {
 
     /**
      * Create a directory. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory.
-     * EEXIST - The name already exists within the directory.
-     * ENOSPC - There is not enough space within the filesystem.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory.
+     * - EEXIST - The name already exists within the directory.
+     * - ENOSPC - There is not enough space within the filesystem.
      */
     mkdir(params: {
         /** The model's id. */
@@ -388,10 +388,11 @@ export interface FsRpc {
 
     /**
      * Remove a name for a regular or special file. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory.
-     * ENOENT - The name does not exist within the directory.
-     * EISDIR - The file pointed to by name is a directory.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory.
+     * - ENOENT - The name does not exist within the directory.
+     * - EISDIR - The file pointed to by name is a directory.
      */
     unlink(params: {
         /** The model's id. */
@@ -425,10 +426,11 @@ export interface FsRpc {
 
     /**
      * Remove an empty directory. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
-     * ENOENT - The name does not exist within the directory.
-     * ENOTEMPTY - The file pointed to by name is not an empty directory.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
+     * - ENOENT - The name does not exist within the directory.
+     * - ENOTEMPTY - The file pointed to by name is not an empty directory.
      */
     rmdir(params: {
         /** The model's id. */
@@ -462,12 +464,13 @@ export interface FsRpc {
 
     /**
      * Move a file or directory. Errors:
-     * ESTALE - At least one of the parent inodes does not exist.
-     * ENOTDIR - At least one of the parent inodes is not a directory.
-     * ENOENT - The name does not exist.
-     * ENOTEMPTY or EEXIST - There is a non-empty directory at the target location.
-     * EISDIR - The target is a directory but the file to rename is not a directory.
-     * ENOSPC - There is not enough space within the filesystem.
+     *
+     * - ESTALE - At least one of the parent inodes does not exist.
+     * - ENOTDIR - At least one of the parent inodes is not a directory.
+     * - ENOENT - The name does not exist.
+     * - ENOTEMPTY or EEXIST - There is a non-empty directory at the target location.
+     * - EISDIR - The target is a directory but the file to rename is not a directory.
+     * - ENOSPC - There is not enough space within the filesystem.
      */
     rename(params: {
         /** The model's id. */
@@ -510,11 +513,12 @@ export interface FsRpc {
 
     /**
      * Create a new name for a file. Errors:
-     * ESTALE - The new parent inode does not exist.
-     * ENOTDIR - The new parent inode is not a directory.
-     * EPERM - The file to link was a directory - not allowed.
-     * EEXIST - The name already exists within the directory.
-     * ENOSPC - There is not enough space within the filesystem.
+     *
+     * - ESTALE - The new parent inode does not exist.
+     * - ENOTDIR - The new parent inode is not a directory.
+     * - EPERM - The file to link was a directory - not allowed.
+     * - EEXIST - The name already exists within the directory.
+     * - ENOSPC - There is not enough space within the filesystem.
      */
     link(params: {
         /** The model's id. */
@@ -553,8 +557,9 @@ export interface FsRpc {
 
     /**
      * Get entries within a directory. Errors:
-     * ESTALE - The inode does not exist.
-     * ENOTDIR - The inode is not a directory.
+     *
+     * - ESTALE - The inode does not exist.
+     * - ENOTDIR - The inode is not a directory.
      */
     readdir(params: {
         /** The model's id. */
@@ -595,9 +600,10 @@ export interface FsRpc {
 
     /**
      * Remove a directory and all its contents. Errors:
-     * ESTALE - The parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
-     * ENOENT - The name does not exist within the directory.
+     *
+     * - ESTALE - The parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory, or the file pointed to by name is not a directory.
+     * - ENOENT - The name does not exist within the directory.
      */
     rmdirAll(params: {
         /** The model's id. */
@@ -630,10 +636,11 @@ export interface FsRpc {
 
     /**
      * Create a copy of a file or directory. Errors:
-     * ESTALE - The new parent inode does not exist.
-     * ENOTDIR - The parent inode is not a directory.
-     * EEXIST - The name already exists within the directory.
-     * ENOSPC - There is not enough space within the filesystem.
+     *
+     * - ESTALE - The new parent inode does not exist.
+     * - ENOTDIR - The parent inode is not a directory.
+     * - EEXIST - The name already exists within the directory.
+     * - ENOSPC - There is not enough space within the filesystem.
      */
     copy(params: {
         /** The model's id. */

@@ -29,7 +29,8 @@ export interface LanguageRpc extends EventEmitter {
 
     /**
      * Start a new language server with access to the model filesystem.
-     * See {@link https://microsoft.github.io/language-server-protocol/}
+     *
+     * See [Language server protocol](https://microsoft.github.io/language-server-protocol/).
      */
     startLanguageServer(params: {
         /** The model's id. */

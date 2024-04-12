@@ -22,9 +22,17 @@ export type Model = {
     id: string
     name: string
     description: string
-    tags: { tag: string; value: string }[]
-    owner: string
+    createdAt: number
+    tags: {
+        tag: string
+        value: string
+    }[]
+    owner: {
+        userId: string
+        username: string
+    }
     access: 'read' | 'readwrite'
+    beingCreated: boolean
     language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
     wasm: boolean
     parameterDefinitions: ParameterDefinitions
@@ -96,7 +104,10 @@ export interface ModelRpc {
             | {
                   type: 'code'
                   /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
-                  tags?: { tag: string; value: string }[]
+                  tags?: {
+                      tag: string
+                      value: string
+                  }[]
                   parameterDefinitions?: ParameterDefinitions
                   language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
                   /** At the time of writing, presets "none", "empty", "tensorflowjs", "pytorch" and "tensorflow" are available. */
@@ -106,7 +117,10 @@ export interface ModelRpc {
             | {
                   type: 'upload'
                   /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
-                  tags?: { tag: string; value: string }[]
+                  tags?: {
+                      tag: string
+                      value: string
+                  }[]
                   parameterDefinitions?: ParameterDefinitions
                   /** At the time of writing, formats "tflite" and "onnx" are available. */
                   format: string
@@ -349,7 +363,10 @@ export interface ModelRpc {
         properties: {
             name?: string
             description?: string
-            tags?: { tag: string; value: string }[]
+            tags?: {
+                tag: string
+                value: string
+            }[]
             parameterDefinitions?: ParameterDefinitions
             defaultLauncherSpecs?: {
                 createState?: LauncherSpec
@@ -382,8 +399,23 @@ export interface ModelRpc {
      * exist (or you don't have access to it).
      */
     getModels(params: {
-        /** Which models to fetch. If unspecified, all models will be fetched. */
-        modelIds?: string[]
+        /** Number of items from the results to skip. Defaults to 0. */
+        offset?: number
+        /** Max number of items to return. Defaults to 20. */
+        limit?: number
+        /** If specified, determines which items to retrieve. */
+        filter?: {
+            owners?: string[]
+            tags?: {
+                tag: string
+                value: string
+            }[]
+            ids?: string[]
+            searchName?: string
+        }
+        /** Specifies a field in the returned items to sort by. Defaults to "createdAt". */
+        sort?: string
+        sortDirection?: 'asc' | 'desc'
     }): Promise<{
         error?:
             | {
@@ -396,7 +428,10 @@ export interface ModelRpc {
               }
         result?: {
             models: Model[]
-            beingCreated: Model[]
+            /** The total number of datasets that matched the filter. */
+            total: number
+            offset: number
+            limit: number
         }
     }>
 
@@ -599,15 +634,11 @@ export interface ModelRpc {
          * returned.
          */
         deleteStates?: string[]
-        /**
-         * Allows your model to access to files of these additional models. Can be useful for merging models together.
-         */
+        /** Allows your model to access to files of these additional models. Can be useful for merging models together. */
         mountModels?: {
             /** Id of the other model to mount. */
             modelId: string
-            /**
-             * If specified, this snapshot on the other model will be used,
-             */
+            /** If specified, this snapshot on the other model will be used. */
             snapshotId?: string
         }[]
     }): Promise<{

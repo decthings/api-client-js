@@ -4,12 +4,15 @@ export type Dataset = {
     id: string
     name: string
     description: string
-    tags: { tag: string; value: string }[]
-    /**
-     * If this dataset was created by a user, the owner will be the userId for that user. Otherwise, the dataset was
-     * be created by Decthings, in which case the owner will be "decthings".
-     */
-    owner: string
+    createdAt: number
+    tags: {
+        tag: string
+        value: string
+    }[]
+    owner: {
+        userId: string
+        username: string
+    }
     access: 'read' | 'readwrite'
     keys: DecthingsParameterDefinition[]
     entries: {
@@ -40,8 +43,11 @@ export interface DatasetRpc {
         name: string
         /** A description of the dataset. */
         description: string
-        /**  Tags are used to specify things like dataset type (image classification, etc.) and other metadata. */
-        tags?: { tag: string; value: string }[]
+        /** Tags are used to specify things like dataset type (image classification, etc.) and other metadata. */
+        tags?: {
+            tag: string
+            value: string
+        }[]
         /**
          * Each key contains separate data, allowing you to mix multiple types. For example, for an image dataset you
          * could have an "image" of type image, and "label" of type string.
@@ -75,7 +81,10 @@ export interface DatasetRpc {
         properties: {
             name?: string
             description?: string
-            tags?: { tag: string; value: string }[]
+            tags?: {
+                tag: string
+                value: string
+            }[]
         }
     }): Promise<{
         error?:
@@ -114,8 +123,23 @@ export interface DatasetRpc {
      * you don't have access to it).
      */
     getDatasets(params: {
-        /** Which datasets to fetch. If unspecified, all datasets will be fetched. */
-        datasetIds?: string[]
+        /** Number of items from the results to skip. Defaults to 0. */
+        offset?: number
+        /** Max number of items to return. Defaults to 20. */
+        limit?: number
+        /** If specified, determines which items to retrieve. */
+        filter?: {
+            owners?: string[]
+            tags?: {
+                tag: string
+                value: string
+            }[]
+            ids?: string[]
+            searchName?: string
+        }
+        /** Specifies a field in the returned items to sort by. Defaults to "createdAt". */
+        sort?: string
+        sortDirection?: 'asc' | 'desc'
     }): Promise<{
         error?:
             | {
@@ -128,6 +152,10 @@ export interface DatasetRpc {
               }
         result?: {
             datasets: Dataset[]
+            /** The total number of datasets that matched the filter. */
+            total: number
+            offset: number
+            limit: number
         }
     }>
 
