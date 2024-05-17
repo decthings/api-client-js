@@ -128,6 +128,11 @@ export interface ModelRpc {
               }
             | {
                   type: 'basedOnModelSnapshot'
+                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
+                  tags?: {
+                      tag: string
+                      value: string
+                  }[]
                   modelId: string
                   snapshotId: string
                   initialState:
@@ -151,6 +156,11 @@ export interface ModelRpc {
               }
             | {
                   type: 'fromExisting'
+                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
+                  tags?: {
+                      tag: string
+                      value: string
+                  }[]
                   modelId: string
                   snapshotId?: string
               }
