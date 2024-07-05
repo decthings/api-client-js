@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { DecthingsTensor, DecthingsParameter, DecthingsParameterProvider } from '../tensor'
+import { DecthingsParameter, DecthingsParameterProvider, DecthingsTensor } from '../tensor'
 import { LauncherSpec, ParameterDefinitions } from '../types'
 
 export type DebugSessionTerminatedReason =

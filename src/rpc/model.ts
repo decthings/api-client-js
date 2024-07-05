@@ -1,5 +1,5 @@
-import { ParameterDefinitions, LauncherSpec, LauncherConfig } from '../types'
 import { DecthingsParameter, DecthingsParameterProvider, DecthingsTensor } from '../tensor'
+import { LauncherConfig, LauncherSpec, ParameterDefinitions } from '../types'
 
 export type ModelState = {
     id: string
