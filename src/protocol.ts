@@ -20,19 +20,19 @@ export type Event = {
 }
 
 // Message protocol:
-// 1. u8 specifying number of additional data segments
+// 1. u8 specifying number of blobs
 // 2. Varint specifying length of JSON data
-// 3. One varint for each data segment, specifying the length of data segment
+// 3. One varint for each blob, specifying the length
 // 4. JSON data
-// 5. Data segments
+// 5. Blobs
 export function serializeForHttp(params: any, data: Buffer[]): Buffer {
-    const numAdditionalSegmentsBuf = Buffer.alloc(1)
-    numAdditionalSegmentsBuf.writeUint8(data.length, 0)
+    const numBlobsBuf = Buffer.alloc(1)
+    numBlobsBuf.writeUint8(data.length, 0)
 
     const msgBuf = Buffer.from(JSON.stringify(params))
     const msgLengthVarint = Varint.serializeVarUint64(msgBuf.byteLength)
 
-    const final: Buffer[] = [numAdditionalSegmentsBuf, msgLengthVarint]
+    const final: Buffer[] = [numBlobsBuf, msgLengthVarint]
 
     data.forEach((el) => {
         const elLengthVarint = Varint.serializeVarUint64(el.byteLength)
@@ -50,22 +50,22 @@ export function serializeForHttp(params: any, data: Buffer[]): Buffer {
 
 // Message protocol:
 // 1. u32 id
-// 2. u8 specifying number of additional data segments
+// 2. u8 specifying number of blobs
 // 3. Varint specifying length of JSON data
-// 4. One varint for each data segment, specifying the length of data segment
+// 4. One varint for each blob, specifying the length
 // 5. JSON data
-// 6. Data segments
+// 6. Blobs
 export function serializeForWebsocket(id: number, message: RequestMessage, data: Buffer[]): Buffer {
     const idBuf = Buffer.alloc(4)
     idBuf.writeUint32BE(id, 0)
 
-    const numAdditionalSegmentsBuf = Buffer.alloc(1)
-    numAdditionalSegmentsBuf.writeUint8(data.length, 0)
+    const numBlobsBuf = Buffer.alloc(1)
+    numBlobsBuf.writeUint8(data.length, 0)
 
     const msgBuf = Buffer.from(JSON.stringify(message))
     const msgLengthVarint = Varint.serializeVarUint64(msgBuf.byteLength)
 
-    const final: Buffer[] = [idBuf, numAdditionalSegmentsBuf, msgLengthVarint]
+    const final: Buffer[] = [idBuf, numBlobsBuf, msgLengthVarint]
 
     data.forEach((el) => {
         const elLengthVarint = Varint.serializeVarUint64(el.byteLength)
@@ -82,26 +82,26 @@ export function serializeForWebsocket(id: number, message: RequestMessage, data:
 // 1. Varint specifying length of JSON data
 // 2. JSON data
 // Repeated:
-// 3. Varint encoding length of next data segment
-// 4. next data segment
+// 3. Varint encoding length of next blob
+// 4. Next blob
 export function deserializeForHttp(data: Buffer): { response: Response; data: Buffer[] } {
     const [length, vLength] = Varint.deserializeVarUint64(data)
     const lengthNum = Number(length)
 
     const response = JSON.parse(data.subarray(vLength, vLength + lengthNum).toString())
 
-    const dataSegments: Buffer[] = []
+    const blobs: Buffer[] = []
     let pos = vLength + lengthNum
     while (pos < data.byteLength) {
-        const [segmentLength, segmentVLength] = Varint.deserializeVarUint64(data.subarray(pos))
-        const segmentLengthNum = Number(segmentLength)
-        dataSegments.push(data.subarray(pos + segmentVLength, pos + segmentVLength + segmentLengthNum))
-        pos += segmentVLength + segmentLengthNum
+        const [blobLength, blobVLength] = Varint.deserializeVarUint64(data.subarray(pos))
+        const blobLengthNum = Number(blobLength)
+        blobs.push(data.subarray(pos + blobVLength, pos + blobVLength + blobLengthNum))
+        pos += blobVLength + blobsLengthNum
     }
 
     return {
         response,
-        data: dataSegments
+        data: blobs
     }
 }
 
@@ -111,8 +111,8 @@ export function deserializeForHttp(data: Buffer): { response: Response; data: Bu
 // 3. Varint specifying length of JSON data
 // 4. JSON data
 // Repeated:
-// 5. Varint encoding length of next data segment
-// 6. next data segment
+// 5. Varint encoding length of next blob
+// 6. Next blob
 export function deserializeForWs(data: Buffer): { response?: [number, Response]; event?: Event; data: Buffer[] } {
     const first = data.readUint8(0)
     if (first === 0) {
@@ -131,20 +131,20 @@ export function deserializeForWs(data: Buffer): { response?: [number, Response];
 
     const json = JSON.parse(data.subarray(vLength, vLength + lengthNum).toString())
 
-    const dataSegments: Buffer[] = []
+    const blobs: Buffer[] = []
     let pos = vLength + lengthNum
     while (pos < data.byteLength) {
-        const [segmentLength, segmentVLength] = Varint.deserializeVarUint64(data.subarray(pos))
-        const segmentLengthNum = Number(segmentLength)
-        dataSegments.push(data.subarray(pos + segmentVLength, pos + segmentVLength + segmentLengthNum))
-        pos += segmentVLength + segmentLengthNum
+        const [blobLength, blobVLength] = Varint.deserializeVarUint64(data.subarray(pos))
+        const blobLengthNum = Number(blobLength)
+        blobs.push(data.subarray(pos + blobVLength, pos + blobVLength + blobLengthNum))
+        pos += blobVLength + blobLengthNum
     }
 
     if (first === 0) {
         // Response message
-        return { response: [id, json], data: dataSegments }
+        return { response: [id, json], data: blobs }
     } else {
         // Event message
-        return { event: { api, ...json }, data: dataSegments }
+        return { event: { api, ...json }, data: blobs }
     }
 }
