@@ -1,5 +1,5 @@
 import { DecthingsParameter, DecthingsParameterProvider, DecthingsTensor } from '../tensor'
-import { LauncherConfig, LauncherSpec, ParameterDefinitions } from '../types'
+import { LauncherSpec, ParameterDefinitions } from '../types'
 
 export type ModelState = {
     id: string
@@ -48,7 +48,6 @@ export type Model = {
         evaluate: number
     }
     filesystemSizeMebibytes: number
-    launcherConfig: LauncherConfig
     ongoingTrainingSessions: string[]
     trainingSessions: string[]
     states: ModelState[]
@@ -58,7 +57,6 @@ export type Model = {
         name: string
         createdAt: number
         filesystemSizeMebibytes: number
-        launcherConfig: LauncherConfig
         parameterDefinitions: ParameterDefinitions
         defaultLauncherSpecs: {
             createState: LauncherSpec
@@ -389,7 +387,6 @@ export interface ModelRpc {
                 train: number
                 evaluate: number
             }
-            launcherConfig?: LauncherConfig
         }
     }): Promise<{
         error?:
@@ -509,6 +506,32 @@ export interface ModelRpc {
             totalInodes: number
             freeInodes: number
         }
+    }>
+
+    /**
+     * Change the Docker image used when executing the model. Increasing the amount will increase the monthly cost but
+     * allow you to store more files within the filesystem.
+     */
+    setImage(params: {
+        /** The model's id. */
+        modelId: string
+        /** The domain name to load from, i.e "docker.io" or "registry.decthings.com" */
+        domain: string
+        /** The repository to use, i.e "library/ubuntu" */
+        repository: string
+        /** The tag to use, to, i.e "latest" */
+        reference: string
+    }): Promise<{
+        error?:
+            | {
+                  code: 'model_not_found' | 'access_denied' | 'image_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
+        result?: {}
     }>
 
     /**

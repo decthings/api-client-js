@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 import { Buffer } from 'buffer'
-import { DatasetRpc, DebugRpc, FsRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './rpc'
+import { DatasetRpc, DebugRpc, FsRpc, ImageRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './rpc'
 import { DecthingsParameter, DecthingsParameterProvider, DecthingsTensor } from './tensor'
 import { DecthingsClient, DecthingsClientInvalidRequestError } from './client'
 
@@ -280,7 +280,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
             dataToSend = params.stateData.data.map((x) => x.data)
             newParams.stateData = { ...params.stateData }
             delete newParams.stateData.data
-            ;(newParams as any).stateKeyNames = params.stateData.data.map((x) => x.key)
+                ; (newParams as any).stateKeyNames = params.stateData.data.map((x) => x.key)
         } else {
             dataToSend = []
         }
@@ -725,6 +725,15 @@ export function makeFsRpc(client: DecthingsClient): FsRpc {
     }
 }
 
+export function makeImageRpc(client: DecthingsClient): ImageRpc {
+    return {
+        createRepository: passthroughCall(client, 'Image', 'createRepository'),
+        updateRepository: passthroughCall(client, 'Image', 'updateRepository'),
+        deleteRepository: passthroughCall(client, 'Image', 'deleteRepository'),
+        getRepositories: passthroughCall(client, 'Image', 'getRepositories')
+    }
+}
+
 class LanguageRpcImpl extends EventEmitter implements LanguageRpc {
     _internal: {
         client: DecthingsClient
@@ -869,6 +878,7 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
         getModels: passthroughCall(client, 'Model', 'getModels'),
         setFilesystemSize: passthroughCall(client, 'Model', 'setFilesystemSize'),
         getFilesystemUsage: passthroughCall(client, 'Model', 'getFilesystemUsage'),
+        setImage: passthroughCall(client, 'Model', 'setImage'),
         createState: async (params: Parameters<ModelRpc['createState']>[0]): ReturnType<ModelRpc['createState']> => {
             if (!params || typeof params !== 'object') {
                 throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')
@@ -894,7 +904,7 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
             }
             const newParams = { ...params }
             delete newParams.data
-            ;(newParams as any).stateKeyNames = params.data.map((x) => x.key)
+                ; (newParams as any).stateKeyNames = params.data.map((x) => x.key)
             const res = await client.rawMethodCall(
                 'Model',
                 'uploadState',

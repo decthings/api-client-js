@@ -1,6 +1,7 @@
 export * from './dataset'
 export * from './debug'
 export * from './fs'
+export * from './image'
 export * from './language'
 export * from './model'
 export * from './persistentLauncher'

@@ -13,14 +13,3 @@ export type LauncherSpec = {
     diskMebibytes?: number
     swapMebibytes?: number
 }
-
-export type LauncherConfig = {
-    nodeVersion?: string
-    pythonVersion?: string
-    packages: {
-        python: {
-            pytorchVersion?: string
-            tensorflowVersion?: string
-        }
-    }
-}

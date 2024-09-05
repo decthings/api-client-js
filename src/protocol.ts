@@ -96,7 +96,7 @@ export function deserializeForHttp(data: Buffer): { response: Response; data: Bu
         const [blobLength, blobVLength] = Varint.deserializeVarUint64(data.subarray(pos))
         const blobLengthNum = Number(blobLength)
         blobs.push(data.subarray(pos + blobVLength, pos + blobVLength + blobLengthNum))
-        pos += blobVLength + blobsLengthNum
+        pos += blobVLength + blobLengthNum
     }
 
     return {

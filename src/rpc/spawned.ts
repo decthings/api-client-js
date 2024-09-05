@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { LauncherConfig, LauncherSpec } from '../types'
+import { LauncherSpec } from '../types'
 
 export type SpawnedCommandTerminatedReason =
     | {
@@ -80,8 +80,6 @@ export interface SpawnedRpc extends EventEmitter {
              * Default: 600.
              */
             timeoutAfterInactiveSeconds?: number
-            /** LauncherConfig to use. */
-            launcherConfig?: LauncherConfig
         }
         /**
          * If true, immediately subscribes you to events "stdout", "stderr" and "exit" for the spawned command. Default:
