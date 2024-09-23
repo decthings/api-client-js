@@ -35,6 +35,12 @@ export type Model = {
     beingCreated: boolean
     language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
     wasm: boolean
+    image: {
+        domain: string
+        repository: string
+        reference: string
+        error?: string
+    }
     parameterDefinitions: ParameterDefinitions
     defaultLauncherSpecs: {
         createState: LauncherSpec
@@ -68,6 +74,11 @@ export type Model = {
             createState: number
             train: number
             evaluate: number
+        }
+        image: {
+            domain: string
+            repository: string
+            reference: string
         }
         state: {
             name: string
@@ -509,8 +520,7 @@ export interface ModelRpc {
     }>
 
     /**
-     * Change the Docker image used when executing the model. Increasing the amount will increase the monthly cost but
-     * allow you to store more files within the filesystem.
+     * Change the Docker image used when executing the model.
      */
     setImage(params: {
         /** The model's id. */
