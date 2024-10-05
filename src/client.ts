@@ -206,7 +206,7 @@ export class DecthingsClient extends EventEmitter {
     /**
      * Call an RPC method on the server.
      *
-     * You most likely want to use the helper classes (client.model, client.data, etc.) instead.
+     * You most likely want to use the helper classes (client.model, client.dataset, etc.) instead.
      */
     public async rawMethodCall(
         api: string,
