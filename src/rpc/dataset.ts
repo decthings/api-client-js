@@ -56,7 +56,7 @@ export interface DatasetRpc {
     }): Promise<{
         error?:
             | {
-                  code: 'quota_exceeded' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code: 'name_already_used' | 'quota_exceeded' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -89,7 +89,7 @@ export interface DatasetRpc {
     }): Promise<{
         error?:
             | {
-                  code: 'dataset_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code: 'dataset_not_found' | 'access_denied' | 'name_already_used' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -135,6 +135,7 @@ export interface DatasetRpc {
                 value: string
             }[]
             ids?: string[]
+            names?: string[]
             searchName?: string
         }
         /** Specifies a field in the returned items to sort by. Defaults to "createdAt". */

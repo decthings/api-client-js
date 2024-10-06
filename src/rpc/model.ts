@@ -177,6 +177,7 @@ export interface ModelRpc {
         error?:
             | {
                   code:
+                      | 'name_already_used'
                       | 'model_not_found'
                       | 'snapshot_not_found'
                       | 'quota_exceeded'
@@ -402,7 +403,7 @@ export interface ModelRpc {
     }): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code: 'model_not_found' | 'access_denied' | 'name_already_used' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -429,6 +430,7 @@ export interface ModelRpc {
                 value: string
             }[]
             ids?: string[]
+            names?: string[]
             searchName?: string
         }
         /** Specifies a field in the returned items to sort by. Defaults to "createdAt". */
