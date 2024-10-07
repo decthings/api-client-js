@@ -39,7 +39,11 @@ export type Model = {
         domain: string
         repository: string
         reference: string
-        error?: string
+        digest: string
+        targetDomain: string
+        targetRepository: string
+        targetReference: string
+        targetError?: string
     }
     parameterDefinitions: ParameterDefinitions
     defaultLauncherSpecs: {
@@ -79,6 +83,7 @@ export type Model = {
             domain: string
             repository: string
             reference: string
+            digest: string
         }
         state: {
             name: string
