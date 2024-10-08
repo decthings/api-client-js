@@ -8,8 +8,13 @@ export type ParameterDefinitions = {
 }
 
 export type LauncherSpec = {
-    cpus: 0.125 | 0.25 | 0.5 | 1 | 2
+    cpus: number
     memoryMebibytes: number
     diskMebibytes?: number
     swapMebibytes?: number
+    gpus?: {
+        /// GPU type, such as "L4" or "A100 80GB"
+        model: string
+        count: number
+    }
 }
