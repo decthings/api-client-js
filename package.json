@@ -1,6 +1,6 @@
 {
   "name": "@decthings/api-client",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "Official JavaScript API client for Decthings",
   "main": "dist/index.js",
   "browser": "dist/browser.js",
