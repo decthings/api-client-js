@@ -43,6 +43,10 @@ export type Model = {
         targetDomain: string
         targetRepository: string
         targetReference: string
+        progress?: {
+            totalBytes: number
+            copiedBytes: number
+        }
         targetError?: string
     }
     parameterDefinitions: ParameterDefinitions
