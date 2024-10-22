@@ -48,8 +48,8 @@ export class DecthingsElementImage {
         if (typeof format != 'string') {
             throw new Error('Invalid format: Expected a string')
         }
-        if (Buffer.from(format).byteLength != 3) {
-            throw new Error('Invalid format: Expected exactly 3 bytes')
+        if (Buffer.from(format).byteLength > 255) {
+            throw new Error('Invalid format: Expected no more than 255 bytes')
         }
         if (!Buffer.isBuffer(data)) {
             throw new Error('Invalid data: Expected a Buffer')
@@ -67,8 +67,8 @@ export class DecthingsElementAudio {
         if (typeof format != 'string') {
             throw new Error('Invalid format: Expected a string')
         }
-        if (Buffer.from(format).byteLength != 3) {
-            throw new Error('Invalid format: Expected exactly 3 bytes')
+        if (Buffer.from(format).byteLength > 255) {
+            throw new Error('Invalid format: Expected no more than 255 bytes')
         }
         if (!Buffer.isBuffer(data)) {
             throw new Error('Invalid data: Expected a Buffer')
@@ -86,8 +86,8 @@ export class DecthingsElementVideo {
         if (typeof format != 'string') {
             throw new Error('Invalid format: Expected a string')
         }
-        if (Buffer.from(format).byteLength != 3) {
-            throw new Error('Invalid format: Expected exactly 3 bytes')
+        if (Buffer.from(format).byteLength > 255) {
+            throw new Error('Invalid format: Expected no more than 255 bytes')
         }
         if (!Buffer.isBuffer(data)) {
             throw new Error('Invalid data: Expected a Buffer')

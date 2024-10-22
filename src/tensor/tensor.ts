@@ -308,10 +308,17 @@ export class DecthingsTensor {
                     if (data.byteLength < pos + length) {
                         throw new Error('Invalid data. Unexpected end of bytes.')
                     }
-                    if (length < 3) {
-                        throw new Error('Invalid data. Expected at least 3 bytes for image.')
+                    if (length < 1) {
+                        throw new Error('Invalid data. Unexpected end of bytes while parsing image format.')
                     }
-                    res[i] = new DecthingsElementImage(data.subarray(pos, pos + 3).toString(), data.subarray(pos + 3, pos + length))
+                    const formatLength = data[pos]
+                    if (length < 1 + formatLength) {
+                        throw new Error('Invalid data. Unexpected end of bytes while parsing image format.')
+                    }
+                    res[i] = new DecthingsElementImage(
+                        data.subarray(pos + 1, pos + 1 + formatLength).toString(),
+                        data.subarray(pos + 1 + formatLength, pos + length)
+                    )
                     pos += length
                 }
             } else if (type === 'audio') {
@@ -328,10 +335,17 @@ export class DecthingsTensor {
                     if (data.byteLength < pos + length) {
                         throw new Error('Invalid data. Unexpected end of bytes.')
                     }
-                    if (length < 3) {
-                        throw new Error('Invalid data. Expected at least 3 bytes for audio.')
+                    if (length < 1) {
+                        throw new Error('Invalid data. Unexpected end of bytes while parsing audio format.')
                     }
-                    res[i] = new DecthingsElementAudio(data.subarray(pos, pos + 3).toString(), data.subarray(pos + 3, pos + length))
+                    const formatLength = data[pos]
+                    if (length < 1 + formatLength) {
+                        throw new Error('Invalid data. Unexpected end of bytes while parsing audio format.')
+                    }
+                    res[i] = new DecthingsElementAudio(
+                        data.subarray(pos + 1, pos + 1 + formatLength).toString(),
+                        data.subarray(pos + 1 + formatLength, pos + length)
+                    )
                     pos += length
                 }
             } else if (type === 'video') {
@@ -348,10 +362,17 @@ export class DecthingsTensor {
                     if (data.byteLength < pos + length) {
                         throw new Error('Invalid data. Unexpected end of bytes.')
                     }
-                    if (length < 3) {
-                        throw new Error('Invalid data. Expected at least 3 bytes for video.')
+                    if (length < 1) {
+                        throw new Error('Invalid data. Unexpected end of bytes while parsing video format.')
                     }
-                    res[i] = new DecthingsElementVideo(data.subarray(pos, pos + 3).toString(), data.subarray(pos + 3, pos + length))
+                    const formatLength = data[pos]
+                    if (length < 1 + formatLength) {
+                        throw new Error('Invalid data. Unexpected end of bytes while parsing video format.')
+                    }
+                    res[i] = new DecthingsElementVideo(
+                        data.subarray(pos + 1, pos + 1 + formatLength).toString(),
+                        data.subarray(pos + 1 + formatLength, pos + length)
+                    )
                     pos += length
                 }
             }
@@ -410,10 +431,11 @@ export class DecthingsTensor {
                     }
                     size += varint.getVarUint64Length(3 + el.data.byteLength)
                     const formatBuf = Buffer.from(el.format)
-                    if (formatBuf.byteLength != 3) {
-                        throw new Error('Corrupt data. Expected the "format" field of each image to be three bytes long.')
+                    if (formatBuf.byteLength > 255) {
+                        throw new Error('Corrupt data. Expected the "format" field of each image to be no more than 255 bytes long.')
                     }
-                    size += formatBuf.byteLength + el.data.byteLength
+                    size += varint.getVarUint64Length(1 + formatBuf.byteLength + el.data.byteLength)
+                    size += 1 + formatBuf.byteLength + el.data.byteLength
                 }
             } else if (this._type === 'audio') {
                 for (let i = 0; i < numElements; i++) {
@@ -421,12 +443,12 @@ export class DecthingsTensor {
                     if (!(el instanceof DecthingsElementAudio)) {
                         throw new Error(`For type ${this._type}, expected all elements to be instances of DecthingsElementAudio.`)
                     }
-                    size += varint.getVarUint64Length(3 + el.data.byteLength)
                     const formatBuf = Buffer.from(el.format)
-                    if (formatBuf.byteLength != 3) {
-                        throw new Error('Corrupt data. Expected the "format" field of each audio to be three bytes long.')
+                    if (formatBuf.byteLength > 255) {
+                        throw new Error('Corrupt data. Expected the "format" field of each audio to be no more than 255 bytes long.')
                     }
-                    size += formatBuf.byteLength + el.data.byteLength
+                    size += varint.getVarUint64Length(1 + formatBuf.byteLength + el.data.byteLength)
+                    size += 1 + formatBuf.byteLength + el.data.byteLength
                 }
             } else if (this._type === 'video') {
                 for (let i = 0; i < numElements; i++) {
@@ -436,10 +458,11 @@ export class DecthingsTensor {
                     }
                     size += varint.getVarUint64Length(3 + el.data.byteLength)
                     const formatBuf = Buffer.from(el.format)
-                    if (formatBuf.byteLength != 3) {
-                        throw new Error('Corrupt data. Expected the "format" field of each video to be three bytes long.')
+                    if (formatBuf.byteLength > 255) {
+                        throw new Error('Corrupt data. Expected the "format" field of each video to be no more than 255 bytes long.')
                     }
-                    size += formatBuf.byteLength + el.data.byteLength
+                    size += varint.getVarUint64Length(1 + formatBuf.byteLength + el.data.byteLength)
+                    size += 1 + formatBuf.byteLength + el.data.byteLength
                 }
             } else {
                 throw new Error('Corrupt data.')
@@ -600,11 +623,12 @@ export class DecthingsTensor {
                         if (!(el instanceof DecthingsElementImage)) {
                             throw new Error(`For type ${this._type}, expected all elements to be instances of DecthingsElementImage.`)
                         }
-                        afterHeader.push(varint.serializeVarUint64(3 + el.data.byteLength))
                         const formatBuf = Buffer.from(el.format)
-                        if (formatBuf.byteLength != 3) {
-                            throw new Error('Corrupt data. Expected the "format" field of each image to be three bytes long.')
+                        if (formatBuf.byteLength > 255) {
+                            throw new Error('Corrupt data. Expected the "format" field of each image to be no more than 255 bytes long.')
                         }
+                        afterHeader.push(varint.serializeVarUint64(1 + formatBuf.byteLength + el.data.byteLength))
+                        afterHeader.push(Buffer.from([formatBuf.byteLength]))
                         afterHeader.push(formatBuf)
                         afterHeader.push(el.data)
                     }
@@ -616,9 +640,11 @@ export class DecthingsTensor {
                         }
                         afterHeader.push(varint.serializeVarUint64(3 + el.data.byteLength))
                         const formatBuf = Buffer.from(el.format)
-                        if (formatBuf.byteLength != 3) {
-                            throw new Error('Corrupt data. Expected the "format" field of each audio to be three bytes long.')
+                        if (formatBuf.byteLength > 255) {
+                            throw new Error('Corrupt data. Expected the "format" field of each audio to be no more than 255 bytes long.')
                         }
+                        afterHeader.push(varint.serializeVarUint64(1 + formatBuf.byteLength + el.data.byteLength))
+                        afterHeader.push(Buffer.from([formatBuf.byteLength]))
                         afterHeader.push(formatBuf)
                         afterHeader.push(el.data)
                     }
@@ -630,9 +656,11 @@ export class DecthingsTensor {
                         }
                         afterHeader.push(varint.serializeVarUint64(3 + el.data.byteLength))
                         const formatBuf = Buffer.from(el.format)
-                        if (formatBuf.byteLength != 3) {
-                            throw new Error('Corrupt data. Expected the "format" field of each video to be three bytes long.')
+                        if (formatBuf.byteLength > 255) {
+                            throw new Error('Corrupt data. Expected the "format" field of each video to be no more than 255 bytes long.')
                         }
+                        afterHeader.push(varint.serializeVarUint64(1 + formatBuf.byteLength + el.data.byteLength))
+                        afterHeader.push(Buffer.from([formatBuf.byteLength]))
                         afterHeader.push(formatBuf)
                         afterHeader.push(el.data)
                     }
