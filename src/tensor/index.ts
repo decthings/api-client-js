@@ -27,6 +27,10 @@ export type DecthingsTensorRules = {
      * A list of the allowed types of elements in the data array.
      */
     allowedTypes: DecthingsElementType[]
+    /**
+     * Annotations are used by the user interface to for example specify minimum/maximum values for a field.
+     */
+    annotations: string[]
 }
 
 /**
@@ -34,5 +38,6 @@ export type DecthingsTensorRules = {
  */
 export type DecthingsParameterDefinition = {
     name: string
+    required: boolean
     rules: DecthingsTensorRules
 }
