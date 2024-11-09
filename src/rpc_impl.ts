@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 import { Buffer } from 'buffer'
-import { DatasetRpc, DebugRpc, FsRpc, ImageRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './rpc'
+import { DatasetRpc, DebugRpc, FsRpc, ImageRpc, LanguageRpc, ModelRpc, OrganizationRpc, PersistentLauncherRpc, SpawnedRpc, TerminalRpc, UserRpc } from './rpc'
 import { DecthingsParameter, DecthingsParameterProvider, DecthingsTensor } from './tensor'
 import { DecthingsClient, DecthingsClientInvalidRequestError } from './client'
 
@@ -280,7 +280,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
             dataToSend = params.stateData.data.map((x) => x.data)
             newParams.stateData = { ...params.stateData }
             delete newParams.stateData.data
-                ; (newParams as any).stateKeyNames = params.stateData.data.map((x) => x.key)
+            ;(newParams as any).stateKeyNames = params.stateData.data.map((x) => x.key)
         } else {
             dataToSend = []
         }
@@ -904,7 +904,7 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
             }
             const newParams = { ...params }
             delete newParams.data
-                ; (newParams as any).stateKeyNames = params.data.map((x) => x.key)
+            ;(newParams as any).stateKeyNames = params.data.map((x) => x.key)
             const res = await client.rawMethodCall(
                 'Model',
                 'uploadState',
@@ -1055,6 +1055,18 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
     }
 }
 
+export function makeOrganizationRpc(client: DecthingsClient): OrganizationRpc {
+    return {
+        createOrganization: passthroughCall(client, 'Organization', 'createOrganization'),
+        getOrganizations: passthroughCall(client, 'Organization', 'getOrganizations'),
+        inviteUsersToOrganization: passthroughCall(client, 'Organization', 'inviteUsersToOrganization'),
+        removeUsersFromOrganization: passthroughCall(client, 'Organization', 'removeUsersFromOrganization'),
+        respondToOrganizationInvitation: passthroughCall(client, 'Organization', 'respondToOrganizationInvitation'),
+        assignRoles: passthroughCall(client, 'Organization', 'assignRoles'),
+        deleteOrganization: passthroughCall(client, 'Organization', 'deleteOrganization')
+    }
+}
+
 export function makePersistentLauncherRpc(client: DecthingsClient): PersistentLauncherRpc {
     return {
         createPersistentLauncher: passthroughCall(client, 'PersistentLauncher', 'createPersistentLauncher'),
@@ -1184,24 +1196,6 @@ export function makeSpawnedRpc(client: DecthingsClient, addKeepalive: (id: strin
         }
     })
     return rpc
-}
-
-export function makeTeamRpc(client: DecthingsClient): TeamRpc {
-    return {
-        createTeam: passthroughCall(client, 'Team', 'createTeam'),
-        updateTeam: passthroughCall(client, 'Team', 'updateTeam'),
-        getTeams: passthroughCall(client, 'Team', 'getTeams'),
-        inviteUsersToTeam: passthroughCall(client, 'Team', 'inviteUsersToTeam'),
-        removeUsersFromTeam: passthroughCall(client, 'Team', 'removeUsersFromTeam'),
-        acceptTeamInvitation: passthroughCall(client, 'Team', 'acceptTeamInvitation'),
-        denyTeamInvitation: passthroughCall(client, 'Team', 'denyTeamInvitation'),
-        setShareModelWithTeam: passthroughCall(client, 'Team', 'setShareModelWithTeam'),
-        setShareDatasetWithTeam: passthroughCall(client, 'Team', 'setShareDatasetWithTeam'),
-        createRole: passthroughCall(client, 'Team', 'createRole'),
-        editRole: passthroughCall(client, 'Team', 'editRole'),
-        removeRole: passthroughCall(client, 'Team', 'removeRole'),
-        assignRole: passthroughCall(client, 'Team', 'assignRole')
-    }
 }
 
 class TerminalRpcImpl extends EventEmitter implements TerminalRpc {

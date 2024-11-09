@@ -75,15 +75,6 @@ export interface UserRpc {
                           type: 'accountRegistered'
                       }
                     | {
-                          type: 'teamInvite'
-                          teamId: string
-                          teamName: string
-                          invitedBy: {
-                              userId: string
-                              username: string
-                          }
-                      }
-                    | {
                           type: 'trainingFinished'
                           modelId: string
                           trainingSessionId: string

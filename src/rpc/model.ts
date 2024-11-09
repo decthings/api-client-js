@@ -457,7 +457,7 @@ export interface ModelRpc {
               }
         result?: {
             models: Model[]
-            /** The total number of datasets that matched the filter. */
+            /** The total number of models that matched the filter. */
             total: number
             offset: number
             limit: number

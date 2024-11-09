@@ -8,13 +8,13 @@ import {
     makeImageRpc,
     makeLanguageRpc,
     makeModelRpc,
+    makeOrganizationRpc,
     makePersistentLauncherRpc,
     makeSpawnedRpc,
-    makeTeamRpc,
     makeTerminalRpc,
     makeUserRpc
 } from './rpc_impl'
-import { DatasetRpc, DebugRpc, FsRpc, ImageRpc, LanguageRpc, ModelRpc, PersistentLauncherRpc, SpawnedRpc, TeamRpc, TerminalRpc, UserRpc } from './rpc'
+import { DatasetRpc, DebugRpc, FsRpc, ImageRpc, LanguageRpc, ModelRpc, OrganizationRpc, PersistentLauncherRpc, SpawnedRpc, TerminalRpc, UserRpc } from './rpc'
 import { DecthingsClientConnectedWebsocket, DecthingsClientWebsocket, createDecthingsClientWebsocket } from './ws'
 
 export class DecthingsClientError extends Error {
@@ -182,9 +182,9 @@ export class DecthingsClient extends EventEmitter {
         this.image = makeImageRpc(this)
         this.language = makeLanguageRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
         this.model = makeModelRpc(this)
+        this.organization = makeOrganizationRpc(this)
         this.persistentLauncher = makePersistentLauncherRpc(this)
         this.spawned = makeSpawnedRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
-        this.team = makeTeamRpc(this)
         this.terminal = makeTerminalRpc(this, this._ws.addKeepAlive, this._ws.removeKeepAlive)
         this.user = makeUserRpc(this)
 
@@ -197,9 +197,9 @@ export class DecthingsClient extends EventEmitter {
     public image: ImageRpc
     public language: LanguageRpc
     public model: ModelRpc
+    public organization: OrganizationRpc
     public persistentLauncher: PersistentLauncherRpc
     public spawned: SpawnedRpc
-    public team: TeamRpc
     public terminal: TerminalRpc
     public user: UserRpc
 
