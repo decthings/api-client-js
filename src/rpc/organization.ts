@@ -6,7 +6,7 @@ export type Organization = {
         userId: string
         username: string
         role: 'admin' | 'editor' | 'viewer'
-    }
+    }[]
     pendingInvites: {
         email: string
     }
