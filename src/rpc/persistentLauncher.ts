@@ -1,5 +1,24 @@
 import { LauncherSpec } from '../types'
 
+export type PersistentLauncher = {
+    id: string
+    name: string
+    createdAt?: number
+    spec: LauncherSpec
+    state:
+        | {
+              type: 'creating' | 'active' | 'deleting'
+          }
+        | {
+              type: 'recreating'
+              previous: 'exit' | 'unknown'
+          }
+    running: {
+        id: string
+        type: 'terminal' | 'spawned' | 'debug' | 'createModelState' | 'train' | 'evaluate'
+    }[]
+}
+
 export interface PersistentLauncherRpc {
     /**
      * Create a new persistent launcher.
@@ -53,24 +72,7 @@ export interface PersistentLauncherRpc {
                   reason: string
               }
         result?: {
-            persistentLaunchers: {
-                id: string
-                name: string
-                createdAt?: number
-                spec: LauncherSpec
-                state:
-                    | {
-                          type: 'creating' | 'active' | 'deleting'
-                      }
-                    | {
-                          type: 'recreating'
-                          previous: 'exit' | 'unknown'
-                      }
-                running: {
-                    id: string
-                    type: 'terminal' | 'spawned' | 'debug' | 'createModelState' | 'train' | 'evaluate'
-                }[]
-            }[]
+            persistentLaunchers: PersistentLauncher[]
             /** The total number of datasets that matched the filter. */
             total: number
             offset: number
