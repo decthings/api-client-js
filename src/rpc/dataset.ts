@@ -4,15 +4,23 @@ export type Dataset = {
     id: string
     name: string
     description: string
+    publicAccess: boolean
     createdAt: number
     tags: {
         tag: string
         value: string
     }[]
-    owner: {
-        userId: string
-        username: string
-    }
+    owner:
+        | {
+              type: 'user'
+              userId: string
+              username: string
+          }
+        | {
+              type: 'organization'
+              organizationId: string
+              organizationName: string
+          }
     access: 'read' | 'readwrite'
     keys: DecthingsParameterDefinition[]
     entries: {
@@ -43,6 +51,8 @@ export interface DatasetRpc {
         name: string
         /** A description of the dataset. */
         description: string
+        /** If true, all Decthings users can find and use this dataset. Defaults to false. */
+        publicAccess?: boolean
         /** Tags are used to specify things like dataset type (image classification, etc.) and other metadata. */
         tags?: {
             tag: string
@@ -56,7 +66,15 @@ export interface DatasetRpc {
     }): Promise<{
         error?:
             | {
-                  code: 'name_already_used' | 'quota_exceeded' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code:
+                      | 'name_already_used'
+                      | 'organization_not_found'
+                      | 'access_denied'
+                      | 'quota_exceeded'
+                      | 'bad_credentials'
+                      | 'too_many_requests'
+                      | 'payment_required'
+                      | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -81,6 +99,7 @@ export interface DatasetRpc {
         properties: {
             name?: string
             description?: string
+            publicAccess?: boolean
             tags?: {
                 tag: string
                 value: string

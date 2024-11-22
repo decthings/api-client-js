@@ -22,15 +22,23 @@ export type Model = {
     id: string
     name: string
     description: string
+    publicAccess: boolean
     createdAt: number
     tags: {
         tag: string
         value: string
     }[]
-    owner: {
-        userId: string
-        username: string
-    }
+    owner:
+        | {
+              type: 'user'
+              userId: string
+              username: string
+          }
+        | {
+              type: 'organization'
+              organizationId: string
+              organizationName: string
+          }
     access: 'read' | 'readwrite'
     beingCreated: boolean
     language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
@@ -117,6 +125,8 @@ export interface ModelRpc {
         name: string
         /** A description of the model. */
         description: string
+        /** If true, all Decthings users can find and use this model. Defaults to false. */
+        publicAccess?: boolean
         /** Required configuration for this model, such as model type, language to use, etc. */
         options:
             | {
@@ -187,6 +197,8 @@ export interface ModelRpc {
             | {
                   code:
                       | 'name_already_used'
+                      | 'organization_not_found'
+                      | 'access_denied'
                       | 'model_not_found'
                       | 'snapshot_not_found'
                       | 'quota_exceeded'
@@ -392,6 +404,7 @@ export interface ModelRpc {
         properties: {
             name?: string
             description?: string
+            publicAccess?: boolean
             tags?: {
                 tag: string
                 value: string

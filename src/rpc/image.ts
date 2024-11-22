@@ -1,11 +1,19 @@
 export type Repository = {
     name: string
     description: string
+    publicAccess: boolean
     createdAt: number
-    owner: {
-        userId: string
-        username: string
-    }
+    owner:
+        | {
+              type: 'user'
+              userId: string
+              username: string
+          }
+        | {
+              type: 'organization'
+              organizationId: string
+              organizationName: string
+          }
     access: 'read' | 'readwrite'
 }
 
@@ -18,10 +26,20 @@ export interface ImageRpc {
         name: string
         /** A description of the repository. */
         description: string
+        /** If true, all Decthings users can find and use this repository. Defaults to false. */
+        publicAccess?: boolean
     }): Promise<{
         error?:
             | {
-                  code: 'quota_exceeded' | 'name_already_used' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code:
+                      | 'name_already_used'
+                      | 'organization_not_found'
+                      | 'access_denied'
+                      | 'quota_exceeded'
+                      | 'bad_credentials'
+                      | 'too_many_requests'
+                      | 'payment_required'
+                      | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -40,6 +58,7 @@ export interface ImageRpc {
         /** Properties and values to change. Empty fields will not be changed. */
         properties: {
             description?: string
+            publicAccess?: boolean
         }
     }): Promise<{
         error?:
