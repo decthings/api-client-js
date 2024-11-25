@@ -429,7 +429,6 @@ export class DecthingsTensor {
                     if (!(el instanceof DecthingsElementImage)) {
                         throw new Error(`For type ${this._type}, expected all elements to be instances of DecthingsElementImage.`)
                     }
-                    size += varint.getVarUint64Length(3 + el.data.byteLength)
                     const formatBuf = Buffer.from(el.format)
                     if (formatBuf.byteLength > 255) {
                         throw new Error('Corrupt data. Expected the "format" field of each image to be no more than 255 bytes long.')
@@ -456,7 +455,6 @@ export class DecthingsTensor {
                     if (!(el instanceof DecthingsElementImage)) {
                         throw new Error(`For type ${this._type}, expected all elements to be instances of DecthingsElementVideo.`)
                     }
-                    size += varint.getVarUint64Length(3 + el.data.byteLength)
                     const formatBuf = Buffer.from(el.format)
                     if (formatBuf.byteLength > 255) {
                         throw new Error('Corrupt data. Expected the "format" field of each video to be no more than 255 bytes long.')
