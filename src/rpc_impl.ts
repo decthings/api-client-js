@@ -918,7 +918,6 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
         },
         cancelCreateState: passthroughCall(client, 'Model', 'cancelCreateState'),
         getCreatingStates: passthroughCall(client, 'Model', 'getCreatingStates'),
-        waitForStateToBeCreated: passthroughCall(client, 'Model', 'waitForStateToBeCreated'),
         updateModelState: passthroughCall(client, 'Model', 'updateModelState'),
         setActiveModelState: passthroughCall(client, 'Model', 'setActiveModelState'),
         deleteModelState: passthroughCall(client, 'Model', 'deleteModelState'),

@@ -365,6 +365,7 @@ export interface UserRpc {
                 name: string
                 unit: string
                 limit: number
+                used: number
                 history: {
                     hourTimestamp: number
                     maxUsed: number
