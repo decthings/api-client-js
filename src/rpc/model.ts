@@ -1,22 +1,21 @@
 import { DecthingsParameter, DecthingsParameterProvider, DecthingsTensor } from '../tensor'
 import { LauncherSpec, ParameterDefinitions } from '../types'
 
-export type ModelState = {
-    id: string
-    name: string
-    /** Identifiers of all the training operations that have been performed to reach this state. */
-    trainingOperations: string[]
-    createdAt: number
-    beingDeleted: boolean
-    state: {
-        key: string
-        byteSize: number
-    }[]
-    mountedModels: {
-        modelId: string
-        snapshotId?: string
-    }[]
-}
+export type ModelSource =
+    | {
+          type: 'code'
+          filesystemSizeMebibytes: number
+          blockSize: number
+          totalBlocks: number
+          freeBlocks: number
+          totalInodes: number
+          freeInodes: number
+      }
+    | {
+          type: 'model'
+          modelId: string
+          versionId: string
+      }
 
 export type Model = {
     id: string
@@ -40,80 +39,54 @@ export type Model = {
               organizationName: string
           }
     access: 'read' | 'readwrite'
-    beingCreated: boolean
-    language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
-    wasm: boolean
-    image: {
-        domain: string
-        repository: string
-        reference: string
-        digest: string
-        targetDomain: string
-        targetRepository: string
-        targetReference: string
-        progress?: {
-            totalBytes: number
-            copiedBytes: number
-        }
-        targetError?: string
-    }
-    parameterDefinitions: ParameterDefinitions
-    defaultLauncherSpecs: {
-        createState: LauncherSpec
-        evaluate: LauncherSpec
-    }
-    maxDurationsSeconds: {
-        codeStartup: number
-        instantiateModel: number
-        createState: number
-        train: number
-        evaluate: number
-    }
-    filesystemSizeMebibytes: number
-    ongoingTrainingSessions: string[]
-    trainingSessions: string[]
-    states: ModelState[]
-    activeState: string
-    snapshots: {
+    source: ModelSource
+    versions: {
         id: string
         name: string
         createdAt: number
         filesystemSizeMebibytes: number
-        parameterDefinitions: ParameterDefinitions
-        defaultLauncherSpecs: {
-            createState: LauncherSpec
-            evaluate: LauncherSpec
+        config: {
+            parameterDefinitions: ParameterDefinitions
+            defaultLauncherSpecs: {
+                initializeWeights: LauncherSpec
+                evaluate: LauncherSpec
+            }
+            maxDurationsSeconds: {
+                codeStartup: number
+                instantiateModel: number
+                initializeWeights: number
+                train: number
+                evaluate: number
+            }
+            image: {
+                domain: string
+                repository: string
+                reference: string
+                digest: string
+            }
         }
-        maxDurationsSeconds: {
-            codeStartup: number
-            instantiateModel: number
-            createState: number
-            train: number
-            evaluate: number
-        }
-        image: {
-            domain: string
-            repository: string
-            reference: string
-            digest: string
-        }
-        state: {
-            name: string
-            state: {
-                key: string
-                byteSize: number
-            }[]
-            mountedModels: {
-                modelId: string
-                snapshotId?: string
-            }[]
-        }
+        mountedModels: {
+            modelId: string
+            versionId: string
+        }[]
+        /** IDs of all the training operations that have been performed to reach this state. */
+        trainingOperations: string[]
+        status:
+            | {
+                  state: 'initializingWeights'
+              }
+            | {
+                  state: 'training'
+                  trainingSessionId: string
+              }
+            | {
+                  state: 'created'
+                  weights: {
+                      key: string
+                      byteSize: number
+                  }[]
+              }
     }[]
-    basedOnSnapshot?: {
-        modelId: string
-        snapshotId: string
-        noLongerExists: boolean
-    }
 }
 
 export interface ModelRpc {
@@ -127,70 +100,28 @@ export interface ModelRpc {
         description: string
         /** If true, all Decthings users can find and use this model. Defaults to false. */
         publicAccess?: boolean
+        /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
+        tags?: {
+            tag: string
+            value: string
+        }[]
         /** Required configuration for this model, such as model type, language to use, etc. */
         options:
             | {
                   type: 'code'
-                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
-                  tags?: {
-                      tag: string
-                      value: string
-                  }[]
                   parameterDefinitions?: ParameterDefinitions
-                  language: 'go' | 'javascript' | 'typescript' | 'python' | 'rust'
-                  /** At the time of writing, presets "none", "empty", "tensorflowjs", "pytorch" and "tensorflow" are available. */
+                  language: 'javascript' | 'typescript' | 'python' | 'rust'
                   preset?: string
                   wasm?: boolean
               }
             | {
-                  type: 'upload'
-                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
-                  tags?: {
-                      tag: string
-                      value: string
-                  }[]
-                  parameterDefinitions?: ParameterDefinitions
-                  /** At the time of writing, formats "tflite" and "onnx" are available. */
-                  format: string
-                  data: Buffer
+                  type: 'basedOnModel'
+                  modelId: string
+                  versionId: string
               }
             | {
-                  type: 'basedOnModelSnapshot'
-                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
-                  tags?: {
-                      tag: string
-                      value: string
-                  }[]
+                  type: 'duplicateExisting'
                   modelId: string
-                  snapshotId: string
-                  initialState:
-                      | {
-                            method: 'copy'
-                        }
-                      | {
-                            method: 'create'
-                            name: string
-                            params: DecthingsParameterProvider[]
-                            launcherSpec: LauncherSpec
-                        }
-                      | {
-                            method: 'upload'
-                            name: string
-                            data: {
-                                key: string
-                                data: Buffer
-                            }[]
-                        }
-              }
-            | {
-                  type: 'fromExisting'
-                  /** Tags are used to specify things like model type (image classifier, etc.) and other metadata. */
-                  tags?: {
-                      tag: string
-                      value: string
-                  }[]
-                  modelId: string
-                  snapshotId?: string
               }
     }): Promise<{
         error?:
@@ -200,24 +131,13 @@ export interface ModelRpc {
                       | 'organization_not_found'
                       | 'access_denied'
                       | 'model_not_found'
-                      | 'snapshot_not_found'
+                      | 'model_version_not_found'
                       | 'quota_exceeded'
                       | 'server_overloaded'
-                      | 'invalid_executable_file'
-                      | 'read_executable_file_failed'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
                       | 'unknown'
-              }
-            | {
-                  code: 'dataset_not_found'
-                  datasetId: string
-              }
-            | {
-                  code: 'dataset_key_not_found'
-                  datasetId: string
-                  datasetKey: string
               }
             | {
                   code: 'invalid_parameter'
@@ -227,78 +147,11 @@ export interface ModelRpc {
         result?: {
             /** A unique identifier which you should use in subsequent API calls. */
             modelId: string
-            /**
-             * Will be true if an initial state is being create, which means the model is being created until the operation is
-             * finished.
-             */
-            isNowCreating: boolean
         }
     }>
 
     /**
-     * Wait for the model create to finish.
-     */
-    waitForModelToBeCreated(params: {
-        /** The model's id. */
-        modelId: string
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'model_already_created' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {
-            /** One of "createModelFailed" or "createModelSuccess" will be present. */
-            createModelFailed?: {
-                error:
-                    | {
-                          code: 'cancelled' | 'server_overloaded' | 'unknown'
-                      }
-                    | {
-                          code: 'create_state_error'
-                          details:
-                              | {
-                                    code: 'invalid_executable_file' | 'read_executable_file_failed' | 'launcher_terminated'
-                                }
-                              | {
-                                    code: 'max_duration_exceeded'
-                                    at: 'codeStartup' | 'createState'
-                                }
-                              | {
-                                    code: 'code_terminated'
-                                    exitCode?: number
-                                    signal?: string
-                                    oom: boolean
-                                }
-                              | {
-                                    code: 'exception'
-                                    at: 'codeStartup' | 'createState'
-                                    exceptionDetails?: string
-                                }
-                          createInitialStateDurations: {
-                              createLauncher: number
-                              codeStartup?: number
-                              createState?: number
-                          }
-                      }
-            }
-            createModelSuccess?: {
-                createInitialStateDurations: {
-                    createLauncher: number
-                    codeStartup: number
-                    createState: number
-                }
-            }
-        }
-    }>
-
-    /**
-     * Delete a model and the associated filesystem, snapshots, states etc. If the model is being created, it will be
-     * cancelled.
+     * Delete a model and the associated files, versions, etc.
      */
     deleteModel(params: {
         /** The model's id. */
@@ -307,84 +160,6 @@ export interface ModelRpc {
         error?:
             | {
                   code: 'model_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {}
-    }>
-
-    /**
-     * Create a snapshot of a model.
-     */
-    snapshotModel(params: {
-        /** The model's id. */
-        modelId: string
-        /** The name of the snapshot. */
-        snapshotName: string
-    }): Promise<{
-        error?:
-            | {
-                  code:
-                      | 'model_not_found'
-                      | 'access_denied'
-                      | 'quota_exceeded'
-                      | 'server_overloaded'
-                      | 'bad_credentials'
-                      | 'too_many_requests'
-                      | 'payment_required'
-                      | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {
-            /** A unique identifier which you should use in subsequent API calls. */
-            snapshotId: string
-        }
-    }>
-
-    /**
-     * Update information about a snapshot.
-     */
-    updateSnapshot(params: {
-        /** The model's id. */
-        modelId: string
-        /** The snapshot's id. */
-        snapshotId: string
-        /** Properties and values to change. Empty fields will not be changed. */
-        properties: {
-            name?: string
-        }
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {}
-    }>
-
-    /**
-     * Delete a snapshot from a model.
-     */
-    deleteSnapshot(params: {
-        /** The model's id. */
-        modelId: string
-        /** The snapshot's id. */
-        snapshotId: string
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -409,18 +184,6 @@ export interface ModelRpc {
                 tag: string
                 value: string
             }[]
-            parameterDefinitions?: ParameterDefinitions
-            defaultLauncherSpecs?: {
-                createState?: LauncherSpec
-                evaluate?: LauncherSpec
-            }
-            maxDurationsSeconds?: {
-                codeStartup: number
-                instantiateModel: number
-                createState: number
-                train: number
-                evaluate: number
-            }
         }
     }): Promise<{
         error?:
@@ -491,7 +254,7 @@ export interface ModelRpc {
             | {
                   code:
                       | 'model_not_found'
-                      | 'invalid_executor_type'
+                      | 'invalid_model_source_type'
                       | 'not_enough_space'
                       | 'access_denied'
                       | 'quota_exceeded'
@@ -510,112 +273,33 @@ export interface ModelRpc {
     }>
 
     /**
-     * Fetches usage statistics such as free blocks and free inodes.
+     * Create a new model version. This will build the model and then call the `initializeWeights` function to
+     * initialize a new, untrained set of weights.
      */
-    getFilesystemUsage(params: {
+    createModelVersion(params: {
         /** The model's id. */
         modelId: string
-    }): Promise<{
-        error?:
-            | {
-                  code:
-                      | 'model_not_found'
-                      | 'not_enough_space'
-                      | 'access_denied'
-                      | 'quota_exceeded'
-                      | 'server_overloaded'
-                      | 'bad_credentials'
-                      | 'too_many_requests'
-                      | 'payment_required'
-                      | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {
-            blockSize: number
-            totalBlocks: number
-            freeBlocks: number
-            totalInodes: number
-            freeInodes: number
-        }
-    }>
-
-    /**
-     * Change the Docker image used when executing the model.
-     */
-    setImage(params: {
-        /** The model's id. */
-        modelId: string
-        /** The domain name to load from, i.e "docker.io" or "registry.decthings.com" */
-        domain: string
-        /** The repository to use, i.e "library/ubuntu" */
-        repository: string
-        /** The tag to use, to, i.e "latest" */
-        reference: string
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'access_denied' | 'image_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {}
-    }>
-
-    /**
-     * Create a new model state by calling the createModelState function on the model. The created state will be added
-     * to the model's state storage.
-     */
-    createState(params: {
-        /** The model's id. */
-        modelId: string
-        /** Name of the new state. */
-        name: string
-        /** Parameters to provide to the createModelState function on the running model. */
+        /** The name of the version. */
+        versionName: string
+        /** Parameters to provide to the initializeWeights function on the running model. */
         params: DecthingsParameterProvider[]
-        /**
-         * Allows your model to access to files and state of these additional models. Can be useful for merging models
-         * together.
-         */
+        /** Allows your model to execute these additional models. Can be useful for merging models together. */
         mountModels?: {
             /** Id of the other model to mount. */
             modelId: string
-            /** Specifies which state on the other model to use. Defaults to the active state. */
-            stateId?: string
-            /**
-             * If specified, this snapshot on the other model will be used. Cannot be used together with stateId, as the state
-             * in the snapshot will be used if snapshotId is specified.
-             */
-            snapshotId?: string
+            /** Version within the other model to mount. */
+            versionId: string
         }[]
-        /** Which launcher to use for running the operation. */
-        executionLocation:
-            | {
-                  type: 'persistentLauncher'
-                  persistentLauncherId: string
-              }
-            | {
-                  type: 'temporaryLauncher'
-                  spec: LauncherSpec
-              }
     }): Promise<{
         error?:
             | {
                   code:
                       | 'model_not_found'
-                      | 'model_to_mount_not_found'
-                      | 'state_for_model_to_mount_not_found'
-                      | 'snapshot_for_model_to_mount_not_found'
-                      | 'persistent_launcher_not_found'
-                      | 'snapshot_no_longer_exists'
                       | 'access_denied'
                       | 'quota_exceeded'
+                      | 'model_to_mount_not_found'
+                      | 'version_for_model_to_mount_not_found'
+                      | 'server_overloaded'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
@@ -631,94 +315,86 @@ export interface ModelRpc {
                   datasetKey: string
               }
             | {
+                  code: 'initialize_weights_failed'
+                  durations: {
+                      total: number
+                      createLauncher?: number
+                      codeStartup?: number
+                      initializeWeights?: number
+                  }
+                  reason:
+                      | {
+                            code:
+                                | 'cancelled'
+                                | 'invalid_executable_file'
+                                | 'read_executable_file_failed'
+                                | 'launcher_terminated'
+                                | 'server_overloaded'
+                                | 'unknown'
+                        }
+                      | {
+                            code: 'max_duration_exceeded'
+                            at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                        }
+                      | {
+                            code: 'code_terminated'
+                            exitCode?: number
+                            signal?: string
+                            oom: boolean
+                        }
+                      | {
+                            code: 'exception'
+                            at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                            exceptionDetails?: string
+                        }
+              }
+            | {
                   code: 'invalid_parameter'
                   parameterName: string
                   reason: string
               }
         result?: {
-            /** One of failed or success will be present */
-            failed?: {
-                durations: {
-                    total: number
-                    createLauncher?: number
-                    codeStartup?: number
-                    createState?: number
-                }
-                error:
-                    | {
-                          code:
-                              | 'launcher_terminated'
-                              | 'cancelled'
-                              | 'server_overloaded'
-                              | 'invalid_executable_file'
-                              | 'read_executable_file_failed'
-                              | 'unknown'
-                      }
-                    | {
-                          code: 'max_duration_exceeded'
-                          at: 'codeStartup' | 'createState'
-                      }
-                    | {
-                          code: 'code_terminated'
-                          exitCode?: number
-                          signal?: string
-                          oom: boolean
-                      }
-                    | {
-                          code: 'exception'
-                          at: 'codeStartup' | 'createState'
-                          exceptionDetails?: string
-                      }
-            }
-            success?: {
-                durations: {
-                    total: number
-                    createLauncher?: number
-                    codeStartup?: number
-                    createState: number
-                }
-                stateId: string
+            /** A unique identifier which you should use in subsequent API calls. */
+            versionId: string
+            initializeWeightsDurations: {
+                total: number
+                createLauncher?: number
+                codeStartup?: number
+                initializeWeights: number
             }
         }
     }>
 
     /**
-     * Create a new model state by uploading data.
+     * Create a new model version. This will use the weights uploaded as part of the request.
      */
-    uploadState(params: {
+    createModelVersionUploadWeights(params: {
         /** The model's id. */
         modelId: string
-        /** Name of the new state. */
-        name: string
+        /** The name of the version. */
+        versionName: string
         /** Data to upload. */
         data: {
             key: string
             data: Buffer
         }[]
-        /**
-         * If provided, these states will be deleted when the new state has been uploaded, in a single atomic operation.
-         * If either the upload or the delete fails, both the upload and the delete operations are aborted and an error is
-         * returned.
-         */
-        deleteStates?: string[]
-        /** Allows your model to access to files of these additional models. Can be useful for merging models together. */
+        /** Allows your model to execute these additional models. Can be useful for merging models together. */
         mountModels?: {
             /** Id of the other model to mount. */
             modelId: string
-            /** If specified, this snapshot on the other model will be used. */
-            snapshotId?: string
+            /** Version within the other model to mount. */
+            versionId: string
         }[]
     }): Promise<{
         error?:
             | {
                   code:
                       | 'model_not_found'
-                      | 'model_to_mount_not_found'
-                      | 'snapshot_for_model_to_mount_not_found'
                       | 'access_denied'
                       | 'quota_exceeded'
-                      | 'state_not_found'
-                      | 'state_is_active'
+                      | 'model_to_mount_not_found'
+                      | 'version_for_model_to_mount_not_found'
+                      | 'server_overloaded'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
@@ -730,71 +406,19 @@ export interface ModelRpc {
                   reason: string
               }
         result?: {
-            stateId: string
+            /** A unique identifier which you should use in subsequent API calls. */
+            versionId: string
         }
     }>
 
     /**
-     * Cancel the creation of a state.
+     * Update information about a model version.
      */
-    cancelCreateState(params: {
+    updateModelVersion(params: {
         /** The model's id. */
         modelId: string
-        /** The state's id. */
-        stateId: string
-    }): Promise<{
-        error?:
-            | {
-                  code:
-                      | 'model_not_found'
-                      | 'state_not_found'
-                      | 'state_already_created'
-                      | 'bad_credentials'
-                      | 'too_many_requests'
-                      | 'payment_required'
-                      | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {}
-    }>
-
-    /**
-     * Get all states that are being created on a model.
-     */
-    getCreatingStates(params: {
-        /** The model's id. */
-        modelId: string
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {
-            states: {
-                id: string
-                name: string
-                startedAt: number
-            }[]
-        }
-    }>
-
-    /**
-     * Modify fields of a state.
-     */
-    updateModelState(params: {
-        /** The model's id. */
-        modelId: string
-        /** The state's id. */
-        stateId: string
+        /** The version's id. */
+        versionId: string
         /** Properties and values to change. Empty fields will not be changed. */
         properties: {
             name?: string
@@ -802,52 +426,9 @@ export interface ModelRpc {
     }): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'state_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {}
-    }>
-
-    /**
-     * Set the active state of a model.
-     */
-    setActiveModelState(params: {
-        /** The model's id. */
-        modelId: string
-        /** The state's id. */
-        stateId: string
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'state_not_found' | 'access_denied' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {}
-    }>
-
-    /**
-     * Delete a state.
-     */
-    deleteModelState(params: {
-        /** The model's id. */
-        modelId: string
-        /** The state's id. */
-        stateId: string
-    }): Promise<{
-        error?:
-            | {
                   code:
                       | 'model_not_found'
-                      | 'state_not_found'
-                      | 'state_is_active'
+                      | 'model_version_not_found'
                       | 'access_denied'
                       | 'bad_credentials'
                       | 'too_many_requests'
@@ -863,50 +444,22 @@ export interface ModelRpc {
     }>
 
     /**
-     * Download the data of a model state.
+     * Download the weight data of a model version.
      */
-    getModelState(params: {
+    getWeights(params: {
         /** The model's id. */
         modelId: string
-        /** The state's id. Defaults to the active state. */
-        stateId?: string
-        /** Which keys to fetch. Defaults to all keys. */
-        keys?: string[]
-    }): Promise<{
-        error?:
-            | {
-                  code: 'model_not_found' | 'state_not_found' | 'state_key_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
-              }
-            | {
-                  code: 'invalid_parameter'
-                  parameterName: string
-                  reason: string
-              }
-        result?: {
-            data: {
-                key: string
-                data: Buffer
-            }[]
-        }
-    }>
-
-    /**
-     * Download the data of a state which belongs to a snapshot.
-     */
-    getSnapshotState(params: {
-        /** The model's id. */
-        modelId: string
-        /** The snapshot's id. */
-        snapshotId: string
-        /** Which keys to fetch. Defaults to all keys. */
+        /** The model version's id. */
+        versionId: string
+        /** Which weight keys to fetch. Defaults to all keys. */
         keys?: string[]
     }): Promise<{
         error?:
             | {
                   code:
                       | 'model_not_found'
-                      | 'snapshot_not_found'
-                      | 'state_key_not_found'
+                      | 'model_version_not_found'
+                      | 'weight_key_not_found'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
@@ -923,6 +476,34 @@ export interface ModelRpc {
                 data: Buffer
             }[]
         }
+    }>
+
+    /**
+     * Delete a model version.
+     */
+    deleteModelVersion(params: {
+        /** The model's id. */
+        modelId: string
+        /** The model version's id. */
+        versionId: string
+    }): Promise<{
+        error?:
+            | {
+                  code:
+                      | 'model_not_found'
+                      | 'model_version_not_found'
+                      | 'access_denied'
+                      | 'bad_credentials'
+                      | 'too_many_requests'
+                      | 'payment_required'
+                      | 'unknown'
+              }
+            | {
+                  code: 'invalid_parameter'
+                  parameterName: string
+                  reason: string
+              }
+        result?: {}
     }>
 
     /**
@@ -931,10 +512,10 @@ export interface ModelRpc {
     train(params: {
         /** The model's id. */
         modelId: string
-        /** Which state to use when instantiating the model. Defaults to the active state. */
-        stateId?: string
-        /** A name to give the new state once it is created. */
-        newStateName: string
+        /** The model version to use. */
+        versionId: string
+        /** A name to give the new model version once it is created. */
+        newVersionName: string
         /** Parameters to provide to the train function on the running model. */
         params: DecthingsParameterProvider[]
         /** Which launcher to use for running the operation. */
@@ -952,8 +533,8 @@ export interface ModelRpc {
             | {
                   code:
                       | 'model_not_found'
+                      | 'model_version_not_found'
                       | 'persistent_launcher_not_found'
-                      | 'snapshot_no_longer_exists'
                       | 'access_denied'
                       | 'quota_exceeded'
                       | 'model_to_mount_no_longer_exists'
@@ -1003,7 +584,8 @@ export interface ModelRpc {
         result?: {
             id: string
             modelId: string
-            newStateName: string
+            versionId: string
+            newVersionName: string
             createdAt: number
             metrics: {
                 name: string
@@ -1028,16 +610,16 @@ export interface ModelRpc {
                       startDurations: {
                           createLauncher?: number
                           codeStartup?: number
-                          createInstantiatedModel?: number
+                          instantiateModel?: number
                       }
                       progress: number
                   }
                 | {
-                      state: 'gettingState'
+                      state: 'gettingWeights'
                       startDurations: {
                           createLauncher?: number
                           codeStartup?: number
-                          createInstantiatedModel?: number
+                          instantiateModel?: number
                       }
                       trainDuration: number
                   }
@@ -1046,37 +628,36 @@ export interface ModelRpc {
                       startDurations: {
                           createLauncher?: number
                           codeStartup?: number
-                          createInstantiatedModel?: number
+                          instantiateModel?: number
                       }
                       trainDuration: number
-                      getStateDuration: number
+                      getWeightsDuration: number
                       finishedAt: number
-                      createdStateId: string
+                      createdVersionId: string
                   }
                 | {
                       state: 'failed'
                       startDurations: {
                           createLauncher?: number
                           codeStartup?: number
-                          createInstantiatedModel?: number
+                          instantiateModel?: number
                       }
                       trainDuration?: number
-                      getStateDuration?: number
+                      getWeightsDuration?: number
                       finishedAt: number
                       failReason:
                           | {
                                 code:
                                     | 'cancelled'
-                                    | 'launcher_terminated'
-                                    | 'server_overloaded'
                                     | 'invalid_executable_file'
                                     | 'read_executable_file_failed'
+                                    | 'launcher_terminated'
+                                    | 'server_overloaded'
                                     | 'unknown'
                             }
                           | {
-                                code: 'exception'
-                                at: 'codeStartup' | 'instantiateModel' | 'train' | 'getState'
-                                exceptionDetails?: string
+                                code: 'max_duration_exceeded'
+                                at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
                             }
                           | {
                                 code: 'code_terminated'
@@ -1085,8 +666,9 @@ export interface ModelRpc {
                                 oom: boolean
                             }
                           | {
-                                code: 'max_duration_exceeded'
-                                at: 'codeStartup' | 'instantiateModel' | 'train' | 'getState'
+                                code: 'exception'
+                                at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                                exceptionDetails?: string
                             }
                   }
         }
@@ -1217,21 +799,21 @@ export interface ModelRpc {
     }>
 
     /**
-     * Get evaluations from a model, given the provided input data.
+     * Evaluate a model using the provided input data.
      */
     evaluate(params: {
         /** The model's id. */
         modelId: string
         /** Parameters to provide to the train function on the running model. */
         params: DecthingsParameterProvider[]
-        /** If provided, the snapshot with this id will be evaluated. */
-        snapshotId?: string
+        /** The model version to evaluate. */
+        versionId: string
     }): Promise<{
         error?:
             | {
                   code:
                       | 'model_not_found'
-                      | 'snapshot_not_found'
+                      | 'model_version_not_found'
                       | 'quota_exceeded'
                       | 'model_to_mount_no_longer_exists'
                       | 'bad_credentials'
@@ -1249,86 +831,84 @@ export interface ModelRpc {
                   datasetKey: string
               }
             | {
+                  code: 'evaluate_failed'
+                  durations: {
+                      total: number
+                      createLauncher?: number
+                      codeStartup?: number
+                      instantiateModel?: number
+                      evaluate?: number
+                  }
+                  executedOnLauncher:
+                      | {
+                            type: 'persistentLauncher'
+                            persistentLauncherId: string
+                            spec: LauncherSpec
+                        }
+                      | {
+                            type: 'temporaryLauncher'
+                            spec: LauncherSpec
+                        }
+                  reason:
+                      | {
+                            code:
+                                | 'cancelled'
+                                | 'invalid_executable_file'
+                                | 'read_executable_file_failed'
+                                | 'launcher_terminated'
+                                | 'server_overloaded'
+                                | 'unknown'
+                        }
+                      | {
+                            code: 'max_duration_exceeded'
+                            at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                        }
+                      | {
+                            code: 'code_terminated'
+                            exitCode?: number
+                            signal?: string
+                            oom: boolean
+                        }
+                      | {
+                            code: 'exception'
+                            at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                            exceptionDetails?: string
+                        }
+                      | {
+                            code: 'invalid_output'
+                            reason: 'invalid' | 'not_applicable_to_parameter_definitions'
+                            details: string
+                        }
+              }
+            | {
                   code: 'invalid_parameter'
                   parameterName: string
                   reason: string
               }
         result?: {
-            /** One of failed or success will be present */
-            failed?: {
-                totalDuration: number
-                durations: {
-                    createLauncher?: number
-                    codeStartup?: number
-                    createInstantiatedModel?: number
-                    evaluate?: number
-                }
-                executedOnLauncher:
-                    | {
-                          type: 'persistentLauncher'
-                          persistentLauncherId: string
-                          spec: LauncherSpec
-                      }
-                    | {
-                          type: 'temporaryLauncher'
-                          spec: LauncherSpec
-                      }
-                error:
-                    | {
-                          code:
-                              | 'launcher_terminated'
-                              | 'cancelled'
-                              | 'server_overloaded'
-                              | 'invalid_executable_file'
-                              | 'read_executable_file_failed'
-                              | 'unknown'
-                      }
-                    | {
-                          code: 'max_duration_exceeded'
-                          at: 'codeStartup' | 'instantiateModel' | 'evaluate'
-                      }
-                    | {
-                          code: 'code_terminated'
-                          exitCode?: number
-                          signal?: string
-                          oom: boolean
-                      }
-                    | {
-                          code: 'exception'
-                          at: 'codeStartup' | 'instantiateModel' | 'evaluate'
-                          exceptionDetails?: string
-                      }
-                    | {
-                          code: 'invalid_output'
-                          reason: 'invalid' | 'not_applicable_to_parameter_definitions'
-                          details: string
-                      }
+            durations: {
+                total: number
+                createLauncher?: number
+                codeStartup?: number
+                instantiateModel?: number
+                evaluate: number
             }
-            success?: {
-                totalDuration: number
-                durations: {
-                    createLauncher?: number
-                    codeStartup?: number
-                    createInstantiatedModel?: number
-                    evaluate: number
-                }
-                executedOnLauncher:
-                    | {
-                          type: 'persistentLauncher'
-                          persistentLauncherId: string
-                          spec: LauncherSpec
-                      }
-                    | {
-                          type: 'temporaryLauncher'
-                          spec: LauncherSpec
-                      }
-                output: DecthingsParameter[]
-            }
+            executedOnLauncher:
+                | {
+                      type: 'persistentLauncher'
+                      persistentLauncherId: string
+                      spec: LauncherSpec
+                  }
+                | {
+                      type: 'temporaryLauncher'
+                      spec: LauncherSpec
+                  }
+            output: DecthingsParameter[]
         }
     }>
 
     /**
-     * Get running and finished evaluations of a model.
+     * Get running and finished evaluations of a model. Finished evaluations are only visible for a few minutes.
      */
     getEvaluations(params: {
         /** The model's id. */
@@ -1346,10 +926,12 @@ export interface ModelRpc {
         result?: {
             running: {
                 id: string
+                versionId: string
                 startedAt: number
             }[]
             finished: {
                 id: string
+                versionId: string
                 startedAt: number
                 finishedAt: number
                 success: boolean
@@ -1372,81 +954,79 @@ export interface ModelRpc {
                   code: 'model_not_found' | 'evaluation_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
+                  code: 'evaluate_failed'
+                  durations: {
+                      total: number
+                      createLauncher?: number
+                      codeStartup?: number
+                      instantiateModel?: number
+                      evaluate?: number
+                  }
+                  executedOnLauncher:
+                      | {
+                            type: 'persistentLauncher'
+                            persistentLauncherId: string
+                            spec: LauncherSpec
+                        }
+                      | {
+                            type: 'temporaryLauncher'
+                            spec: LauncherSpec
+                        }
+                  reason:
+                      | {
+                            code:
+                                | 'cancelled'
+                                | 'invalid_executable_file'
+                                | 'read_executable_file_failed'
+                                | 'launcher_terminated'
+                                | 'server_overloaded'
+                                | 'unknown'
+                        }
+                      | {
+                            code: 'max_duration_exceeded'
+                            at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                        }
+                      | {
+                            code: 'code_terminated'
+                            exitCode?: number
+                            signal?: string
+                            oom: boolean
+                        }
+                      | {
+                            code: 'exception'
+                            at: 'codeStartup' | 'initializeWeights' | 'loadWeights' | 'evaluate' | 'train' | 'getWeights'
+                            exceptionDetails?: string
+                        }
+                      | {
+                            code: 'invalid_output'
+                            reason: 'invalid' | 'not_applicable_to_parameter_definitions'
+                            details: string
+                        }
+              }
+            | {
                   code: 'invalid_parameter'
                   parameterName: string
                   reason: string
               }
         result?: {
-            /** One of failed or success will be present */
-            failed?: {
-                totalDuration: number
-                durations: {
-                    createLauncher?: number
-                    codeStartup?: number
-                    createInstantiatedModel?: number
-                    evaluate?: number
-                }
-                executedOnLauncher:
-                    | {
-                          type: 'persistentLauncher'
-                          persistentLauncherId: string
-                          spec: LauncherSpec
-                      }
-                    | {
-                          type: 'temporaryLauncher'
-                          spec: LauncherSpec
-                      }
-                error:
-                    | {
-                          code:
-                              | 'launcher_terminated'
-                              | 'cancelled'
-                              | 'server_overloaded'
-                              | 'invalid_executable_file'
-                              | 'read_executable_file_failed'
-                              | 'unknown'
-                      }
-                    | {
-                          code: 'max_duration_exceeded'
-                          at: 'codeStartup' | 'instantiateModel' | 'evaluate'
-                      }
-                    | {
-                          code: 'code_terminated'
-                          exitCode?: number
-                          signal?: string
-                          oom: boolean
-                      }
-                    | {
-                          code: 'exception'
-                          at: 'codeStartup' | 'instantiateModel' | 'evaluate'
-                          exceptionDetails?: string
-                      }
-                    | {
-                          code: 'invalid_output'
-                          reason: 'invalid' | 'not_applicable_to_parameter_definitions'
-                          details: string
-                      }
+            durations: {
+                total: number
+                createLauncher?: number
+                codeStartup?: number
+                instantiateModel?: number
+                evaluate: number
             }
-            success?: {
-                totalDuration: number
-                durations: {
-                    createLauncher?: number
-                    codeStartup?: number
-                    createInstantiatedModel?: number
-                    evaluate: number
-                }
-                executedOnLauncher:
-                    | {
-                          type: 'persistentLauncher'
-                          persistentLauncherId: string
-                          spec: LauncherSpec
-                      }
-                    | {
-                          type: 'temporaryLauncher'
-                          spec: LauncherSpec
-                      }
-                output: DecthingsParameter[]
-            }
+            executedOnLauncher:
+                | {
+                      type: 'persistentLauncher'
+                      persistentLauncherId: string
+                      spec: LauncherSpec
+                  }
+                | {
+                      type: 'temporaryLauncher'
+                      spec: LauncherSpec
+                  }
+            output: DecthingsParameter[]
         }
     }>
 
@@ -1477,6 +1057,8 @@ export interface ModelRpc {
     setUsedPersistentLaunchersForEvaluate(params: {
         /** The model's id. */
         modelId: string
+        /** The model version's id. */
+        versionId: string
         persistentLaunchers: {
             persistentLauncherId: string
             level: 'launcher' | 'codeStart' | 'instantiatedModel'
@@ -1487,7 +1069,7 @@ export interface ModelRpc {
                   code:
                       | 'persistent_launcher_not_found'
                       | 'model_not_found'
-                      | 'snapshot_no_longer_exists'
+                      | 'model_version_not_found'
                       | 'access_denied'
                       | 'bad_credentials'
                       | 'too_many_requests'
@@ -1508,10 +1090,12 @@ export interface ModelRpc {
     getUsedPersistentLaunchersForEvaluate(params: {
         /** The model's id. */
         modelId: string
+        /** The model version's id. */
+        versionId: string
     }): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code: 'model_not_found' | 'model_version_not_found' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
                   code: 'invalid_parameter'

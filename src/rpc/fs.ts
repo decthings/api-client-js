@@ -24,8 +24,11 @@ export interface FsRpc {
     lookup(params: {
         /** The model's id. */
         modelId: string
-        /** If provided, the filesystem of the snapshot will be used. Otherwise, the filesystem of the model will be used. */
-        snapshotId?: string
+        /**
+         * If provided, the filesystem of the model version will be used. Otherwise, the filesystem of the model will be
+         * used.
+         */
+        versionId?: string
         /** Inode number of the parent directory. */
         parent: number
         /** Filename within the parent directory. */
@@ -35,7 +38,7 @@ export interface FsRpc {
             | {
                   code:
                       | 'model_not_found'
-                      | 'snapshot_not_found'
+                      | 'model_version_not_found'
                       | 'ESTALE'
                       | 'ENOENT'
                       | 'ENOTDIR'
@@ -63,14 +66,17 @@ export interface FsRpc {
     getattr(params: {
         /** The model's id. */
         modelId: string
-        /** If provided, the filesystem of the snapshot will be used. Otherwise, the filesystem of the model will be used. */
-        snapshotId?: string
+        /**
+         * If provided, the filesystem of the model version will be used. Otherwise, the filesystem of the model will be
+         * used.
+         */
+        versionId?: string
         /** Inode number of file. */
         inode: number
     }): Promise<{
         error?:
             | {
-                  code: 'model_not_found' | 'snapshot_not_found' | 'ESTALE' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
+                  code: 'model_not_found' | 'model_version_not_found' | 'ESTALE' | 'bad_credentials' | 'too_many_requests' | 'payment_required' | 'unknown'
               }
             | {
                   code: 'invalid_parameter'
@@ -187,8 +193,11 @@ export interface FsRpc {
     read(params: {
         /** The model's id. */
         modelId: string
-        /** If provided, the filesystem of the snapshot will be used. Otherwise, the filesystem of the model will be used. */
-        snapshotId?: string
+        /**
+         * If provided, the filesystem of the model version will be used. Otherwise, the filesystem of the model will be
+         * used.
+         */
+        versionId?: string
         /** Inode number of file. */
         inode: number
         /** Where in the file to start reading. */
@@ -200,7 +209,7 @@ export interface FsRpc {
             | {
                   code:
                       | 'model_not_found'
-                      | 'snapshot_not_found'
+                      | 'model_version_not_found'
                       | 'ESTALE'
                       | 'EISDIR'
                       | 'EINVAL'
@@ -316,8 +325,11 @@ export interface FsRpc {
     readlink(params: {
         /** The model's id. */
         modelId: string
-        /** If provided, the filesystem of the snapshot will be used. Otherwise, the filesystem of the model will be used. */
-        snapshotId?: string
+        /**
+         * If provided, the filesystem of the model version will be used. Otherwise, the filesystem of the model will be
+         * used.
+         */
+        versionId?: string
         /** Inode number of file. */
         inode: number
     }): Promise<{
@@ -325,7 +337,7 @@ export interface FsRpc {
             | {
                   code:
                       | 'model_not_found'
-                      | 'snapshot_not_found'
+                      | 'model_version_not_found'
                       | 'ESTALE'
                       | 'EINVAL'
                       | 'bad_credentials'
@@ -564,8 +576,11 @@ export interface FsRpc {
     readdir(params: {
         /** The model's id. */
         modelId: string
-        /** If provided, the filesystem of the snapshot will be used. Otherwise, the filesystem of the model will be used. */
-        snapshotId?: string
+        /**
+         * If provided, the filesystem of the model version will be used. Otherwise, the filesystem of the model will be
+         * used.
+         */
+        versionId?: string
         /** Inode number of directory. */
         inode: number
     }): Promise<{
@@ -573,7 +588,7 @@ export interface FsRpc {
             | {
                   code:
                       | 'model_not_found'
-                      | 'snapshot_not_found'
+                      | 'model_version_not_found'
                       | 'ESTALE'
                       | 'ENOTDIR'
                       | 'bad_credentials'

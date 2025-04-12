@@ -15,7 +15,7 @@ export type PersistentLauncher = {
           }
     running: {
         id: string
-        type: 'terminal' | 'spawned' | 'debug' | 'createModelState' | 'train' | 'evaluate'
+        type: 'terminal' | 'spawned' | 'debug' | 'train' | 'evaluate'
     }[]
 }
 

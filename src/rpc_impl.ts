@@ -246,7 +246,7 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         }
         return { result: res.result }
     }
-    async callCreateModelState(params: Parameters<DebugRpc['callCreateModelState']>[0]): ReturnType<DebugRpc['callCreateModelState']> {
+    async callInitializeWeights(params: Parameters<DebugRpc['callInitializeWeights']>[0]): ReturnType<DebugRpc['callInitializeWeights']> {
         if (!params || typeof params !== 'object') {
             throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')
         }
@@ -263,24 +263,24 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
         if (!params || typeof params !== 'object') {
             throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')
         }
-        if (!params.stateData || typeof params.stateData !== 'object') {
-            throw new DecthingsClientInvalidRequestError('Invalid parameter "stateData": Expected an object.')
+        if (!params.weights || typeof params.weights !== 'object') {
+            throw new DecthingsClientInvalidRequestError('Invalid parameter "weights": Expected an object.')
         }
         const newParams = { ...params }
         let dataToSend: Buffer[]
-        if (params.stateData.type === 'data') {
+        if (params.weights.type === 'data') {
             if (
-                !Array.isArray(params.stateData.data) ||
-                params.stateData.data.some((el) => el === null || !el || typeof el.key !== 'string' || !Buffer.isBuffer(el.data))
+                !Array.isArray(params.weights.data) ||
+                params.weights.data.some((el) => el === null || !el || typeof el.key !== 'string' || !Buffer.isBuffer(el.data))
             ) {
                 throw new DecthingsClientInvalidRequestError(
-                    'Invalid parameter "stateData": For type="data", expected the field "data" to be an array of objects like { key: string, data: Buffer }.'
+                    'Invalid parameter "weights": For type="data", expected the field "data" to be an array of objects like { key: string, data: Buffer }.'
                 )
             }
-            dataToSend = params.stateData.data.map((x) => x.data)
-            newParams.stateData = { ...params.stateData }
-            delete newParams.stateData.data
-            ;(newParams as any).stateKeyNames = params.stateData.data.map((x) => x.key)
+            dataToSend = params.weights.data.map((x) => x.data)
+            newParams.weights = { ...params.weights }
+            delete newParams.weights.data
+            ;(newParams as any).weightKeyNames = params.weights.data.map((x) => x.key)
         } else {
             dataToSend = []
         }
@@ -370,23 +370,23 @@ class DebugRpcImpl extends EventEmitter implements DebugRpc {
             }
         }
     }
-    async callGetModelState(params: Parameters<DebugRpc['callGetModelState']>[0]): ReturnType<DebugRpc['callGetModelState']> {
-        const res = await this._internal.client.rawMethodCall('Debug', 'callGetModelState', params, [])
+    async callGetWeights(params: Parameters<DebugRpc['callGetWeights']>[0]): ReturnType<DebugRpc['callGetWeights']> {
+        const res = await this._internal.client.rawMethodCall('Debug', 'callGetWeights', params, [])
         if (res.error) {
             return { error: res.error }
         }
         return { result: res.result }
     }
-    async downloadStateData(params: Parameters<DebugRpc['downloadStateData']>[0]): ReturnType<DebugRpc['downloadStateData']> {
-        const res = await this._internal.client.rawMethodCall('Debug', 'downloadStateData', params, [])
+    async downloadWeightData(params: Parameters<DebugRpc['downloadWeightData']>[0]): ReturnType<DebugRpc['downloadWeightData']> {
+        const res = await this._internal.client.rawMethodCall('Debug', 'downloadWeightData', params, [])
         if (res.data.length === 0 || res.error) {
             return res.result ? { result: res.result } : { error: res.error }
         }
         const result = {
             ...res.result,
-            data: res.data.map((x, idx) => ({ key: res.result.stateKeyNames[idx], data: x }))
+            data: res.data.map((x, idx) => ({ key: res.result.weightKeyNames[idx], data: x }))
         }
-        delete result.stateKeyNames
+        delete result.weightKeyNames
         return {
             result
         }
@@ -807,92 +807,27 @@ export function makeLanguageRpc(client: DecthingsClient, addKeepalive: (id: stri
 
 export function makeModelRpc(client: DecthingsClient): ModelRpc {
     return {
-        createModel: async (params: Parameters<ModelRpc['createModel']>[0]): ReturnType<ModelRpc['createModel']> => {
-            if (!params || typeof params !== 'object') {
-                throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')
-            }
-            if (!params.options || typeof params.options !== 'object') {
-                throw new DecthingsClientInvalidRequestError('Invalid parameter "options": Expected an object.')
-            }
-            let actualParams: any = params
-            let binary: Buffer[] = []
-            if (params.options.type === 'upload') {
-                if (!Buffer.isBuffer(params.options.data)) {
-                    throw new DecthingsClientInvalidRequestError('Invalid parameter "options.data": Expected a Buffer.')
-                }
-                binary.push(params.options.data)
-                actualParams = { ...params, options: { ...params.options } }
-                delete actualParams.options.data
-            }
-            if (params.options.type === 'basedOnModelSnapshot') {
-                if (!params.options.initialState) {
-                    throw new DecthingsClientInvalidRequestError('Invalid parameter "options.initialState": Expected an object.')
-                }
-                if (params.options.initialState.method === 'create') {
-                    const [newParamProviders, data] = serializeParameterProviders(params.options.initialState.params)
-                    actualParams = {
-                        ...params,
-                        options: {
-                            ...params.options,
-                            initialState: {
-                                ...params.options.initialState,
-                                params: newParamProviders
-                            }
-                        }
-                    }
-                    binary = data
-                }
-                if (params.options.initialState.method === 'upload') {
-                    const data = params.options.initialState.data
-                    if (!Array.isArray(data) || data.some((el) => el === null || !el || typeof el.key !== 'string' || !Buffer.isBuffer(el.data))) {
-                        throw new DecthingsClientInvalidRequestError(
-                            'Invalid parameter "options.initialState.data": Expected an array of objects like { key: string, data: Buffer }.'
-                        )
-                    }
-                    actualParams = {
-                        ...params,
-                        options: {
-                            ...params.options,
-                            initialState: {
-                                ...params.options.initialState,
-                                data: undefined,
-                                stateKeyNames: data.map((x) => x.key)
-                            }
-                        }
-                    }
-                    binary = data.map((x) => x.data)
-                }
-            }
-            const res = await client.rawMethodCall('Model', 'createModel', actualParams, binary)
-            if (res.error) {
-                return { error: res.error }
-            }
-            return { result: res.result }
-        },
-        waitForModelToBeCreated: passthroughCall(client, 'Model', 'waitForModelToBeCreated'),
+        createModel: passthroughCall(client, 'Model', 'createModel'),
         deleteModel: passthroughCall(client, 'Model', 'deleteModel'),
-        snapshotModel: passthroughCall(client, 'Model', 'snapshotModel'),
-        updateSnapshot: passthroughCall(client, 'Model', 'updateSnapshot'),
-        deleteSnapshot: passthroughCall(client, 'Model', 'deleteSnapshot'),
         updateModel: passthroughCall(client, 'Model', 'updateModel'),
         getModels: passthroughCall(client, 'Model', 'getModels'),
         setFilesystemSize: passthroughCall(client, 'Model', 'setFilesystemSize'),
-        getFilesystemUsage: passthroughCall(client, 'Model', 'getFilesystemUsage'),
-        setImage: passthroughCall(client, 'Model', 'setImage'),
-        createState: async (params: Parameters<ModelRpc['createState']>[0]): ReturnType<ModelRpc['createState']> => {
+        createModelVersion: async (params: Parameters<ModelRpc['createModelVersion']>[0]): ReturnType<ModelRpc['createModelVersion']> => {
             if (!params || typeof params !== 'object') {
                 throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')
             }
             const [newParamProviders, data] = serializeParameterProviders(params.params)
             const newParams = { ...params }
             newParams.params = newParamProviders
-            const res = await client.rawMethodCall('Model', 'createState', newParams, data)
+            const res = await client.rawMethodCall('Model', 'createModelVersion', newParams, data)
             if (res.error) {
                 return { error: res.error }
             }
             return { result: res.result }
         },
-        uploadState: async (params: Parameters<ModelRpc['uploadState']>[0]): ReturnType<ModelRpc['uploadState']> => {
+        createModelVersionUploadWeights: async (
+            params: Parameters<ModelRpc['createModelVersionUploadWeights']>[0]
+        ): ReturnType<ModelRpc['createModelVersionUploadWeights']> => {
             if (!params || typeof params !== 'object') {
                 throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')
             }
@@ -907,7 +842,7 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
             ;(newParams as any).stateKeyNames = params.data.map((x) => x.key)
             const res = await client.rawMethodCall(
                 'Model',
-                'uploadState',
+                'createModelVersionUploadWeights',
                 newParams,
                 params.data.map((x) => x.data)
             )
@@ -916,13 +851,9 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
             }
             return { result: res.result }
         },
-        cancelCreateState: passthroughCall(client, 'Model', 'cancelCreateState'),
-        getCreatingStates: passthroughCall(client, 'Model', 'getCreatingStates'),
-        updateModelState: passthroughCall(client, 'Model', 'updateModelState'),
-        setActiveModelState: passthroughCall(client, 'Model', 'setActiveModelState'),
-        deleteModelState: passthroughCall(client, 'Model', 'deleteModelState'),
-        getModelState: async (params: Parameters<ModelRpc['getModelState']>[0]): ReturnType<ModelRpc['getModelState']> => {
-            const res = await client.rawMethodCall('Model', 'getModelState', params, [])
+        updateModelVersion: passthroughCall(client, 'Model', 'updateModelVersion'),
+        getWeights: async (params: Parameters<ModelRpc['getWeights']>[0]): ReturnType<ModelRpc['getWeights']> => {
+            const res = await client.rawMethodCall('Model', 'getWeights', params, [])
             if (res.data.length === 0 || res.error) {
                 return res.result ? { result: res.result } : { error: res.error }
             }
@@ -935,20 +866,7 @@ export function makeModelRpc(client: DecthingsClient): ModelRpc {
                 result
             }
         },
-        getSnapshotState: async (params: Parameters<ModelRpc['getSnapshotState']>[0]): ReturnType<ModelRpc['getSnapshotState']> => {
-            const res = await client.rawMethodCall('Model', 'getSnapshotState', params, [])
-            if (res.data.length === 0 || res.error) {
-                return res.result ? { result: res.result } : { error: res.error }
-            }
-            const result = {
-                ...res.result,
-                data: res.data.map((x, idx) => ({ key: res.result.stateKeyNames[idx], data: x }))
-            }
-            delete result.stateKeyNames
-            return {
-                result
-            }
-        },
+        deleteModelVersion: passthroughCall(client, 'Model', 'deleteModelVersion'),
         train: async (params: Parameters<ModelRpc['train']>[0]): ReturnType<ModelRpc['train']> => {
             if (!params || typeof params !== 'object') {
                 throw new DecthingsClientInvalidRequestError('Invalid parameters: Expected an object.')

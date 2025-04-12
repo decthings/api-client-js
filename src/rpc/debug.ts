@@ -205,9 +205,9 @@ export interface DebugRpc extends EventEmitter {
     }>
 
     /**
-     * Call the function "createModelState" in a debug session.
+     * Call the function "initializeWeights" in a debug session.
      */
-    callCreateModelState(params: {
+    callInitializeWeights(params: {
         /** The debug session's id. */
         debugSessionId: string
         /** Parameters to provide to the function. */
@@ -237,7 +237,7 @@ export interface DebugRpc extends EventEmitter {
               }
         result?: {
             dataId: string
-            state: {
+            weights: {
                 key: string
                 byteSize: number
             }[]
@@ -250,8 +250,8 @@ export interface DebugRpc extends EventEmitter {
     callInstantiateModel(params: {
         /** The debug session's id. */
         debugSessionId: string
-        /** Data to use as model state. */
-        stateData:
+        /** Data to use as weights. */
+        weights:
             | {
                   type: 'data'
                   data: {
@@ -269,7 +269,7 @@ export interface DebugRpc extends EventEmitter {
                   code:
                       | 'debug_session_not_found'
                       | 'debug_session_terminated'
-                      | 'state_data_not_found'
+                      | 'weight_data_not_found'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
@@ -497,9 +497,9 @@ export interface DebugRpc extends EventEmitter {
     }>
 
     /**
-     * Call the function "getModelState" on the instantiated model within a debug session.
+     * Call the function "getWeights" on the instantiated model within a debug session.
      */
-    callGetModelState(params: {
+    callGetWeights(params: {
         /** The debug session's id. */
         debugSessionId: string
         /** Identifier of the instantiated model to use, as returned by the 'callInstantiateModel' function. */
@@ -527,7 +527,7 @@ export interface DebugRpc extends EventEmitter {
               }
         result?: {
             dataId: string
-            state: {
+            weights: {
                 key: string
                 byteSize: number
             }[]
@@ -535,22 +535,22 @@ export interface DebugRpc extends EventEmitter {
     }>
 
     /**
-     * Download data returned by either "callCreateModelState" or "callGetModelState".
+     * Download data returned by either "callInitializeWeights" or "callGetWeights".
      */
-    downloadStateData(params: {
+    downloadWeightData(params: {
         /** The debug session's id. */
         debugSessionId: string
-        /** The data's id, as returned by 'callCreateModelState' or 'callGetModelState'. */
+        /** The data's id, as returned by 'callInitializeWeights' or 'callGetWeights'. */
         dataId: string
-        /** Which state keys to fetch. Defaults to all keys. */
+        /** Which weight keys to fetch. Defaults to all keys. */
         keys?: string[]
     }): Promise<{
         error?:
             | {
                   code:
                       | 'debug_session_not_found'
-                      | 'state_data_not_found'
-                      | 'state_key_not_found'
+                      | 'weight_data_not_found'
+                      | 'weight_key_not_found'
                       | 'bad_credentials'
                       | 'too_many_requests'
                       | 'payment_required'
